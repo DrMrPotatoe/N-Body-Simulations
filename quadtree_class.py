@@ -257,7 +257,7 @@ class QuadTree:
 class Test:
     '''Test the Quad-Tree implementation'''
     def __init__(self):
-        self.capacity = 1
+        self.capacity = 4
         self.points = []
         self.tree = None
     
@@ -322,7 +322,7 @@ testmethod = Test()
 testmethod.create_points(1000)
 testmethod.build_tree(debug= 0)
 testmethod.draw()
-#testmethod.tree.print_tree()
+testmethod.tree.print_tree()
 
 print('EOF')
 
