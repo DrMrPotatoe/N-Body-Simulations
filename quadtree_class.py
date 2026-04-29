@@ -1,6 +1,7 @@
 from __future__ import annotations
 import numpy as np
 import matplotlib.pyplot as plt
+plt.switch_backend("QtAgg")
 import matplotlib.patches as patches
 
 
@@ -103,7 +104,7 @@ class Rect:
         x1, x2 = self.W, self.E
         y1, y2 = self.N, self.S
         plt.plot()
-        ax.plot([x1, x2, x2, x1, x1], [y1, y1, y2, y2, y1], c=c, linewidth=lw)
+        ax.plot([x1, x2, x2, x1, x1], [y1, y1, y2, y2, y1], c, linewidth=lw)
 
 
 class Circ:
@@ -149,7 +150,7 @@ class QuadTree:
     '''
     Recursive Quad-tree implementation
     '''
-    def __init__(self, bounds: Rect, capacity = 1, depth = 0):
+    def __init__(self, bounds: Rect, capacity = 1, depth = 0, verbose = 0):
         '''Initialize the quadtee.\n
         bounds is a Rect object showing the bounds\n
         capacity is the number of points each node holds
@@ -166,21 +167,21 @@ class QuadTree:
         self.divided = False
         self.points = []
 
-        self.verbose = 0
+        self.verbose = verbose
         
     def divide(self):
         '''
         Divide the node into its 4 children
         '''
         cx, cy = self.bounds.cx, self.bounds.cy
-        w = self.bounds.w/2
-        self.NW = QuadTree(Rect(cx= cx-w/2, cy= cy+w/2, w= w/2), capacity= self.capacity, depth= self.depth + 1)
-        self.NE = QuadTree(Rect(cx= cx+w/2, cy= cy+w/2, w= w/2), capacity= self.capacity, depth= self.depth + 1)
-        self.SW = QuadTree(Rect(cx= cx-w/2, cy= cy-w/2, w= w/2), capacity= self.capacity, depth= self.depth + 1)
-        self.SE = QuadTree(Rect(cx= cx+w/2, cy= cy-w/2, w= w/2), capacity= self.capacity, depth= self.depth + 1)
+        w = self.bounds.w
+        self.NW = QuadTree(Rect(cx= cx-w/4, cy= cy+w/4, w= w/2), capacity= self.capacity, depth= self.depth + 1, verbose= self.verbose)
+        self.NE = QuadTree(Rect(cx= cx+w/4, cy= cy+w/4, w= w/2), capacity= self.capacity, depth= self.depth + 1, verbose= self.verbose)
+        self.SW = QuadTree(Rect(cx= cx-w/4, cy= cy-w/4, w= w/2), capacity= self.capacity, depth= self.depth + 1, verbose= self.verbose)
+        self.SE = QuadTree(Rect(cx= cx+w/4, cy= cy-w/4, w= w/2), capacity= self.capacity, depth= self.depth + 1, verbose= self.verbose)
         self.divided = True
         for p in self.points:
-            self.insert(p)    
+            self.insert_to_quadrant(p)    
         self.points = []
         if self.verbose > 1:
             print(f'Node Divided (Depth {self.depth})')
@@ -222,15 +223,35 @@ class QuadTree:
                 print(f'Point {point.id} triggered divide at depth {self.depth}')
             return self.insert_to_quadrant(point)
 
-    def draw(self, ax):
-        ''' Draws the tree'''
-        self.bounds.draw(ax)
+    def print_tree(self):
+        '''Return a string representation of the tree'''
+        prefix = (self.depth * 2 + 1) *  " " 
         if self.divided:
-            self.NW.draw(ax)
-            self.NE.draw(ax)
-            self.SW.draw(ax)
-            self.SE.draw(ax)
+            print(f"{prefix}[Node d={self.depth}] "
+                f"mass={self.mass:.3f} "
+                f"COM=({self.mx:.3f},{self.my:.3f})")
 
+            self.NW.print_tree()
+            self.NE.print_tree()
+            self.SW.print_tree()
+            self.SE.print_tree()
+
+        else:
+            pts = ", ".join(f"{p.id}" for p in self.points)
+            print(f"{prefix}[Leaf d={self.depth}] "
+                f"n={len(self.points)} "
+                f"pts ID=[{pts}] "
+                f"mass={self.mass:.3f} "
+                f"COM=({self.mx:.3f},{self.my:.3f})")
+            
+    def draw(self, ax, c='k', lw=1):
+        ''' Draws the tree'''
+        self.bounds.draw(ax, c=c, lw=lw)
+        if self.divided:
+            self.NW.draw(ax, c=c, lw=lw)
+            self.NE.draw(ax, c=c, lw=lw)
+            self.SW.draw(ax, c=c, lw=lw)
+            self.SE.draw(ax, c=c, lw=lw)
 
 
 class Test:
@@ -242,48 +263,67 @@ class Test:
     
     def create_points(self, npoints: int):
         '''Geneate a random assortment of points'''
-        x = np.random.random_sample((npoints, 1)) * 2
-        y = np.random.random_sample((npoints, 1)) * 2
+
+        x = np.round(np.random.normal(1, 0.2, (1, npoints)).T * 2 -1, 6)
+        y = np.round(np.random.normal(1, 0.2, (1, npoints)).T * 2 -1, 6)
+
+        #x = np.round(np.random.random_sample((1, npoints)).T * 2 -1, 6)
+        #y = np.round(np.random.random_sample((1, npoints)).T * 2 -1, 6)
+        
         m = np.random.normal(1, 0.2, (npoints, 1))
 
         x_max, x_min = x.max(), x.min()
         y_max, y_min = y.max(), y.min()
-        w = np.max([(x_max - x_min), (y_max - y_min)])
+        w = max(x_max - x_min, y_max - y_min)
 
-        cx = 0.5 * (x_max - x_min)
-        cy = 0.5 * (y_max - y_min)
+        cx = 0.5 * (x_max + x_min)
+        cy = 0.5 * (y_max + y_min)
 
-        self.bounds = Rect(cx, cy, w)
+        self.bounds = Rect(cx, cy, w*1.01)
 
         for i in range(npoints):
-            point = Point(x = x[i], y = y[i], mass = m[i], ID = i)
+ 
+            point = Point(x = x[i].item(), y = y[i].item(), mass = m[i].item(), ID = i)
             self.points.append(point)
+            #print(f'Point {i}: ({x[i].item()}, {y[i].item()})')
 
-        print([testmethod.bounds.contains(p) for p in testmethod.points])
+        #print([testmethod.bounds.contains(p) for p in testmethod.points])
 
-    def build_tree(self):
+    def build_tree(self, debug):
         '''Builds the tree'''
         self.tree = QuadTree(bounds= self.bounds,
                              capacity= self.capacity)
         
-        self.tree.verbose = 2
+        self.tree.verbose = debug
+        #print(20 * '=')
         for point in self.points:
+            #print(f'Insterting Point {point.id}...')
             self.tree.insert(point)
-            print(f'Point {point.id} inserted')
+            #print(f'Point {point.id} inserted')
+            #print(20 * '=')
 
     def draw(self):
         '''Draws the whole tree'''
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(9,9))
 
-        self.tree.draw(ax)
+        self.tree.draw(ax, c='k', lw = 0.5)
 
         for p in self.points:
-            p.draw(ax)
-        plt.savefig('quadtree_test.png')
+            p.draw(ax, size=1)
+
+        ax.set_aspect('equal')
+        ax.set_xlim(self.bounds.W, self.bounds.E)
+        ax.set_ylim(self.bounds.S, self.bounds.N)
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        plt.savefig('quadtree_test.svg', bbox_inches= 'tight')
 
 testmethod = Test()
-testmethod.create_points(10)
-testmethod.build_tree()
+testmethod.create_points(1000)
+testmethod.build_tree(debug= 0)
 testmethod.draw()
+#testmethod.tree.print_tree()
+
+print('EOF')
 
         
