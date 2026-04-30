@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.switch_backend("QtAgg")
 import matplotlib.patches as patches
+from utils import generate_initial_state
 
 
 class Point:
@@ -10,15 +11,35 @@ class Point:
     A point at (x, y) with mass m with ID id
     '''
     def __init__(self, x: float, y: float, mass: float, ID: int = None, density: float = 0.1):
+       
        self.x = x
        self.y = y
+
+       self.vx = 0
+       self.vy = 0
+
+       self.fx = 0
+       self.fy = 0
+
        self.m = mass
+
        self.id = ID
        self.r = ((mass*density)/(np.pi))**(1/2)
 
     def __str__(self):
+        '''Formated string putput'''
         return f'P{self.id}: ({self.x:.4f}, {self.y:.4f}); m={self.m:.4f}'
     
+    def velocity(self, vx, vy):
+        ''' Defines Velocity'''
+        self.vx = vx
+        self.vy = vy
+
+    def acceleration(self, fx, fy):
+        ''' Defines Acceleration'''
+        self.fx = fx
+        self.fy = fy
+
     def distance2(self, other: Point) -> float:
         '''Distance^2 to another point'''
         other_x, other_y = other.x, other.y
@@ -35,6 +56,18 @@ class Point:
         '''
         c_rad = self.r + other.r # Collision Radius
         return (self.distance2(other=other)) < (c_rad*c_rad)
+
+    def update_position_euler(self, fx, fy, dt):
+        ''' Uses Euler integration to update the position of the point'''
+        self.fx, self.fy = fx, fy
+
+        self.x += self.x + self.vx * dt
+        self.y += self.y + self.vy * dt
+
+        self.vx += self.vx + fx * dt
+        self.vy += self.vy + fy * dt
+
+
     
     def draw(self, ax, size=10, style='o'):
         '''Draws the point on the plot'''
@@ -289,6 +322,29 @@ class Test:
 
         #print([testmethod.bounds.contains(p) for p in testmethod.points])
 
+    def create_points_orbiting(self, npoints: int, main_mass= 3e4):
+
+        m = np.random.rand(1, npoints+1).T
+        m[0,0] = main_mass
+        mpos, mvel = generate_initial_state(npoints, mu= main_mass * 0.01)
+        x,y = np.vstack([np.asarray([0,0]).reshape([1,2]),mpos.T]).T
+        vx, vy = np.vstack([np.asarray([0,0]).reshape([1,2]),mvel.T]).T
+
+        x_max, x_min = x.max(), x.min()
+        y_max, y_min = y.max(), y.min()
+        w = max(x_max - x_min, y_max - y_min)
+
+        cx = 0.5 * (x_max + x_min)
+        cy = 0.5 * (y_max + y_min)
+
+        self.bounds = Rect(cx, cy, w*1.01)
+
+        for i in range(npoints+1):
+ 
+            point = Point(x = x[i].item(), y = y[i].item(), mass = m[i].item(), ID = i)
+            point.velocity(vx = vx[i], vy= vy[i])
+            self.points.append(point)
+
     def build_tree(self, debug):
         '''Builds the tree'''
         self.tree = QuadTree(bounds= self.bounds,
@@ -319,7 +375,8 @@ class Test:
         plt.savefig('quadtree_test.svg', bbox_inches= 'tight')
 
 testmethod = Test()
-testmethod.create_points(1000)
+#testmethod.create_points(1000)
+testmethod.create_points_orbiting(100)
 testmethod.build_tree(debug= 0)
 testmethod.draw()
 testmethod.tree.print_tree()

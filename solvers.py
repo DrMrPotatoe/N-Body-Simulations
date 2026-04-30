@@ -15,8 +15,6 @@ class N_Body_Solver:
         self.fMain_Mass = 10000  
         self.theta = 0.5 # Quadtree threshold
 
-
-
     def prepare(self):
         self.vMass_Bodies = np.random.rand(1, self.iNum_Bodies+1).T
         self.vMass_Bodies[0,0] = self.fMain_Mass
