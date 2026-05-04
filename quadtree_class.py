@@ -30,11 +30,10 @@ class Point:
         '''Formated string putput'''
         return f'P{self.id}: ({self.x:.4f}, {self.y:.4f}); m={self.m:.4f}'
     
-    def velocity(self, vx, vy):
-        ''' Defines Velocity'''
-        self.vx = vx
-        self.vy = vy
-
+    def mu(self, G= 1):
+        '''Returns mu of the body'''
+        return self.m * G
+    
     def acceleration(self, fx, fy):
         ''' Defines Acceleration'''
         self.fx = fx
@@ -56,16 +55,35 @@ class Point:
         '''
         c_rad = self.r + other.r # Collision Radius
         return (self.distance2(other=other)) < (c_rad*c_rad)
+    
+    def force_between(self, point:Point, G= 1):
+        ''' Calculates the force between it and another point'''
+        d = self.distance_to(point)
+        d2 = d * d
+        df = - self.mu(G) * point.m / d2
+        ux = (self.x - point.x)/d
+        uy = (self.y - point.y)/d
+        self.fx += df * ux
+        self.fy += df * uy
+
+    def reset_force(self, fx=0, fy=0):
+        '''Adds the forces to the already present one on the point'''
+        self.fx += fx
+        self.fy += fy
+
+    def reset_force(self, fx=0, fy=0):
+        '''Resets the force back to (fx, fy)'''
+        self.fx, self.fy = fx, fy
+
 
     def update_position_euler(self, fx, fy, dt):
         ''' Uses Euler integration to update the position of the point'''
         self.fx, self.fy = fx, fy
 
-        self.x += self.x + self.vx * dt
-        self.y += self.y + self.vy * dt
-
-        self.vx += self.vx + fx * dt
-        self.vy += self.vy + fy * dt
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+        self.vx += fx * dt
+        self.vy += fy * dt
 
 
     
@@ -236,6 +254,7 @@ class QuadTree:
             return False
 
     def insert(self, point: Point):
+        ''' Insterts a point onto the tree'''
         assert self.bounds.contains(point), 'ERROR POINT OOB??'
         
         self.mx = ((self.mx * self.mass + point.x * point.m) / (self.mass + point.m))
@@ -255,6 +274,21 @@ class QuadTree:
             if self.verbose > 0:
                 print(f'Point {point.id} triggered divide at depth {self.depth}')
             return self.insert_to_quadrant(point)
+
+    def force_on(self, point: Point, theta = 0.5, G = 1., eps= 1e-3) -> np.ndarray[float, float]:
+        ''' Computes the force on the point'''
+        force = 0
+        if self.mass == 0:
+            
+            if self.divided:
+                pass
+
+        
+        
+
+        
+        
+        
 
     def print_tree(self):
         '''Return a string representation of the tree'''
@@ -324,6 +358,8 @@ class Test:
 
     def create_points_orbiting(self, npoints: int, main_mass= 3e4):
 
+        from utils import generate_initial_state
+
         m = np.random.rand(1, npoints+1).T
         m[0,0] = main_mass
         mpos, mvel = generate_initial_state(npoints, mu= main_mass * 0.01)
@@ -340,9 +376,10 @@ class Test:
         self.bounds = Rect(cx, cy, w*1.01)
 
         for i in range(npoints+1):
- 
+
             point = Point(x = x[i].item(), y = y[i].item(), mass = m[i].item(), ID = i)
-            point.velocity(vx = vx[i], vy= vy[i])
+            point.vx, point.vy = vx[i].item(), vy[i].item()
+
             self.points.append(point)
 
     def build_tree(self, debug):
@@ -376,7 +413,7 @@ class Test:
 
 testmethod = Test()
 #testmethod.create_points(1000)
-testmethod.create_points_orbiting(100)
+testmethod.create_points_orbiting(1000)
 testmethod.build_tree(debug= 0)
 testmethod.draw()
 testmethod.tree.print_tree()
