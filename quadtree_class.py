@@ -28,7 +28,7 @@ class Point:
 
     def __str__(self):
         '''Formated string putput'''
-        return f'P{self.id}: ({self.x:.4f}, {self.y:.4f}); m={self.m:.4f}'
+        return f'P {self.id:5.0f}: ({self.x:10.6f}, {self.y:10.6f}); m={self.m:10.6f}; F=({self.fx:10.6f}, {self.fy:10.6f})'
     
     def mu(self, G= 1):
         '''Returns mu of the body'''
@@ -44,18 +44,19 @@ class Point:
         other_x, other_y = other.x, other.y
         return np.square(self.x - other_x) + np.square(other_y - self.y)
 
-    def distance_to(self, other: Point) -> float:
+    def distance_to(self, other: Point, eps: float= 1e-3) -> float:
         '''Distance to another point'''
         other_x, other_y = other.x, other.y
-        return np.hypot(other_x - self.x, other_y - self.y)
+        return np.sqrt(np.square(other_x - self.x) + np.square(other_y - self.y) + eps*eps)
 
-    def distance2_xy(self, x: float, y: float) -> float:
+    def distance2_xy(self, x: float, y: float, eps: float= 1e-3) -> float:
         ''' Distance^2 to xy coods'''
-        return np.square(self.x - x) + np.square(y - self.y)
+        return np.square(self.x - x) + np.square(self.y - y) + np.square(eps)
     
-    def distance_to_xy(self, x: float, y: float) -> float:
+    def distance_to_xy(self, x: float, y: float, eps: float= 1e-3) -> float:
         ''' Distance to xy coords'''
-        np.hypot(x - self.x, y - self.y)
+        d2 = np.square(self.x - x) + np.square(self.y - y) + np.square(eps)
+        return np.sqrt(d2)
 
     def collides(self, other:Point) -> bool:
         ''' Whether this point and another point intersect (for collisions)'''
@@ -71,20 +72,18 @@ class Point:
         uy = (self.y - point.y)/d
         fx = df * ux
         fy = df * uy
-        return [fx, fy]
+        return np.array([fx, fy])
 
-    def force_between_xy(self, x: float, y: float, m: float, G= 1) -> np.ndarray[float, float]:
+    def force_between_xy(self, x: float, y: float, m: float, G: float = 1., eps: float = 1e-3) -> np.ndarray[float, float]:
         ''' Calculates the force between it and another point'''
-        d = self.distance_to_xy(x, y)
-        d2 = d * d
+        d2 = self.distance2_xy(x, y, eps)
+        d = np.sqrt(d2)
         df = - self.mu(G) * m / d2
-        ux = (self.x - x)/d
-        uy = (self.y - y)/d
-        fx = df * ux
-        fy = df * uy
-        return [fx, fy]
+        fx = df * (x - self.x)/d
+        fy = df * (y - self.y)/d
+        return np.array([fx, fy])
 
-    def reset_force(self, fx=0, fy=0):
+    def add_force(self, fx=0, fy=0):
         ''' Adds the forces to the already present one on the point'''
         self.fx += fx
         self.fy += fy
@@ -93,14 +92,14 @@ class Point:
         ''' Resets the force back to (fx, fy)'''
         self.fx, self.fy = fx, fy
 
-    def update_position_euler(self, fx, fy, dt):
+    def update_position_euler(self, dt):
         ''' Uses Euler integration to update the position of the point'''
-        self.fx, self.fy = fx, fy
+        ax, ay = self.fx / self.m, self.fy / self.m
 
         self.x += self.vx * dt
         self.y += self.vy * dt
-        self.vx += fx * dt
-        self.vy += fy * dt
+        self.vx += ax * dt
+        self.vy += ay * dt
 
     def draw(self, ax, size=10, style='o'):
         ''' Draws the point on the plot'''
@@ -292,44 +291,35 @@ class QuadTree:
 
     def force_on(self, point: Point, theta = 0.5, G = 1., eps= 1e-3) -> np.ndarray[float, float]:
         ''' Computes the force on the point'''
-        force = np.asarray((0.,0.))
-        for p in self.points:
 
-            if p is point:
-                continue
+        force = np.zeros(2)
 
-            if not self.mass == 0:
-                
-                if self.divided:
-
-                    distance_to_CM2 = point.distance2_xy(self.mx, self.my)
-                    point_theta = self.bounds.w * self.bounds.w / distance_to_CM2
-
-                    if point_theta > theta:
-
-                        force += self.NW.force_on(point= point, theta= theta, G= G, eps= eps)
-                        force += self.NE.force_on(point= point, theta= theta, G= G, eps= eps)
-                        force += self.SW.force_on(point= point, theta= theta, G= G, eps= eps)
-                        force += self.SE.force_on(point= point, theta= theta, G= G, eps= eps)
-                    else:
-                        force += point.force_between_xy(x= self.mx, y= self.my, m= self.mass, G= G, eps= eps)
-
-                else:
-                    force += point.force_between_xy(x= self.mx, y= self.my, m= self.mass, G= G, eps= eps)
-
-                 
-
-
-
-
-
-
+        if self.mass ==0:
+            return force
         
-        
+        if not self.divided:
+            for p in self.points:
+                if p is point:
+                    continue
 
+                force += point.force_between_xy(x= p.x, y= p.y, m= p.m, G= G, eps= eps)
+            return force
         
-        
-        
+        else:
+            dx = self.mx - point.x
+            dy = self.my - point.y
+            d = np.sqrt(dx*dx + dy*dy + eps*eps)
+            s = self.bounds.w
+
+            if (s/d) < theta:
+                return point.force_between_xy(x= self.mx, y= self.my, m= self.mass, G= G, eps= eps)
+            
+            else:
+                force += self.NW.force_on(point= point, theta= theta, G= G, eps= eps)
+                force += self.NE.force_on(point= point, theta= theta, G= G, eps= eps)
+                force += self.SW.force_on(point= point, theta= theta, G= G, eps= eps)
+                force += self.SE.force_on(point= point, theta= theta, G= G, eps= eps)
+        return force
 
     def print_tree(self):
         '''Return a string representation of the tree'''
@@ -362,12 +352,16 @@ class QuadTree:
             self.SE.draw(ax, c=c, lw=lw)
 
 
-class Test:
+class Quad_Tree_Interface_V1:
     '''Test the Quad-Tree implementation'''
     def __init__(self):
         self.capacity = 1
         self.points = []
         self.tree = None
+
+        self.theta = 0.5
+        self.G = 1e-6
+        self.eps = 1e-3
     
     def create_points(self, npoints: int):
         '''Geneate a random assortment of points'''
@@ -403,7 +397,7 @@ class Test:
 
         m = np.random.rand(1, npoints+1).T
         m[0,0] = main_mass
-        mpos, mvel = generate_initial_state(npoints, mu= main_mass * 0.01)
+        mpos, mvel = generate_initial_state(npoints, mu= main_mass * self.G)
         x,y = np.vstack([np.asarray([0,0]).reshape([1,2]),mpos.T]).T
         vx, vy = np.vstack([np.asarray([0,0]).reshape([1,2]),mvel.T]).T
 
@@ -436,6 +430,14 @@ class Test:
             #print(f'Point {point.id} inserted')
             #print(20 * '=')
 
+    def compute_force(self, verbose: bool= False):
+        ''' Computes the force of every point'''
+
+        for p in self.points:
+            fx, fy = self.tree.force_on(point= p, theta= self.theta, G= self.G, eps= self.eps)
+            p.acceleration(fx= fx, fy= fy)
+            print(p)    
+
     def draw(self):
         '''Draws the whole tree'''
         fig, ax = plt.subplots(figsize=(9,9))
@@ -452,12 +454,14 @@ class Test:
         ax.get_yaxis().set_visible(False)
         plt.savefig('quadtree_test.svg', bbox_inches= 'tight')
 
-testmethod = Test()
-testmethod.create_points(1000)
-#testmethod.create_points_orbiting(1000)
+testmethod = Quad_Tree_Interface_V1()
+testmethod.capacity = 2
+# testmethod.create_points(10)
+testmethod.create_points_orbiting(100)
 testmethod.build_tree(debug= 0)
 testmethod.draw()
-#testmethod.tree.print_tree()
+testmethod.compute_force(verbose= False)
+# testmethod.tree.print_tree()
 
 print('EOF')
 
