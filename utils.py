@@ -7,7 +7,7 @@ def generate_initial_state(nBodies: int, mu: float):
 
     # --- orbital elements ---
     a_min, a_max = 0.1, np.log10(nBodies)             # semi-major axis range
-    e_max = 0.95                         # strictly < 1
+    e_max = 0.8                         # strictly < 1
     a = a_min + (a_max - a_min) * np.random.rand(nBodies, 1)
     e = e_max * np.random.rand(nBodies, 1)
 
