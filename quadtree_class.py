@@ -34,8 +34,8 @@ class Point:
         '''Returns mu of the body'''
         return self.m * G
     
-    def acceleration(self, fx, fy):
-        ''' Defines Acceleration'''
+    def set_force(self, fx, fy):
+        ''' Defines force'''
         self.fx = fx
         self.fy = fy
 
@@ -101,6 +101,16 @@ class Point:
         self.vx += ax * dt
         self.vy += ay * dt
 
+    def kick(self, dt: float):
+        ''' Give a kick to the point'''
+        self.vx += 0.5 * self.fx / self.m * dt
+        self.vy += 0.5 * self.fy / self.m * dt
+
+    def drift(self, dt: float):
+        ''' Update Position using the velocity'''
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+
     def draw(self, ax, size=10, style='o'):
         ''' Draws the point on the plot'''
         ax.scatter(self.x, self.y, s=size)
@@ -139,8 +149,8 @@ class Rect:
         '''
         return not (self.E < other.W or
                     other.E < self.W or
-                    self.S < other.N or
-                    other.S < self.N)
+                    self.N < other.S or
+                    other.N < self.S)
     
     def distance2(self, other:Point):
         '''Distance^2 to a point from the centre'''
@@ -150,7 +160,7 @@ class Rect:
     def distance_to(self, other: Point) -> float:
         '''Distance to a point from the centre'''
         other_x, other_y = other.x, other.y
-        return np.hypot(other_x - self.x, other_y - self.y)
+        return np.hypot(other_x - self.cx, other_y - self.cy)
 
     def Quadrant(self, point: Point) -> str:
         '''Find which quadant the point belongs into'''
@@ -303,6 +313,7 @@ class QuadTree:
                     continue
 
                 force += point.force_between_xy(x= p.x, y= p.y, m= p.m, G= G, eps= eps)
+            
             return force
         
         else:
@@ -435,8 +446,15 @@ class Quad_Tree_Interface_V1:
 
         for p in self.points:
             fx, fy = self.tree.force_on(point= p, theta= self.theta, G= self.G, eps= self.eps)
-            p.acceleration(fx= fx, fy= fy)
-            print(p)    
+            p.set_force(fx= fx, fy= fy)
+            if verbose:
+                print(p) 
+
+        if verbose:
+            fx_tot = sum(p.fx for p in self.points)
+            fy_tot = sum(p.fy for p in self.points)
+            print(f"Net force = ({fx_tot:.6e}, {fy_tot:.6e})")
+
 
     def draw(self):
         '''Draws the whole tree'''
@@ -460,7 +478,7 @@ testmethod.capacity = 2
 testmethod.create_points_orbiting(100)
 testmethod.build_tree(debug= 0)
 testmethod.draw()
-testmethod.compute_force(verbose= False)
+testmethod.compute_force(verbose= True)
 # testmethod.tree.print_tree()
 
 print('EOF')
