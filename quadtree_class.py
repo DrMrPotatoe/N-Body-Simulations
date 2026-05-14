@@ -1,11 +1,10 @@
 from __future__ import annotations
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 plt.switch_backend("QtAgg")
 import matplotlib.patches as patches
 from matplotlib.animation import FuncAnimation, PillowWriter
-from utils import generate_initial_state
-
 
 class Point:
     '''
@@ -45,28 +44,27 @@ class Point:
     def distance2(self, other: Point) -> float:
         '''Distance^2 to another point'''
         other_x, other_y = other.x, other.y
-        return np.square(self.x - other_x) + np.square(other_y - self.y)
+        return (other_x - self.x) * (other_x - self.x) + (other_y - self.y) * (other_y - self.y)
 
-    def distance_to(self, other: Point, eps: float= 1e-3) -> float:
+    def distance_to(self, other: Point) -> float:
         '''Distance to another point'''
         other_x, other_y = other.x, other.y
-        return np.sqrt(np.square(other_x - self.x) + np.square(other_y - self.y) + eps*eps)
+        return math.hypot((other_x - self.x), (other_y - self.y))
 
-    def distance2_xy(self, x: float, y: float, eps: float= 1e-3) -> float:
+    def distance2_xy(self, x: float, y: float) -> float:
         ''' Distance^2 to xy coods'''
-        return np.square(self.x - x) + np.square(self.y - y) + np.square(eps)
+        return ((self.x - x) * (self.x - x)) + ((self.y - y) * (self.y - y))
     
-    def distance_to_xy(self, x: float, y: float, eps: float= 1e-3) -> float:
+    def distance_to_xy(self, x: float, y: float) -> float:
         ''' Distance to xy coords'''
-        d2 = np.square(self.x - x) + np.square(self.y - y) + np.square(eps)
-        return np.sqrt(d2)
+        return math.hypot((self.x - x), (self.y - y))
 
     def collides(self, other:Point) -> bool:
         ''' Whether this point and another point intersect (for collisions)'''
         c_rad = self.r + other.r # Collision Radius
         return (self.distance2(other=other)) < (c_rad*c_rad)
     
-    def force_between(self, point:Point, G= 1) -> np.ndarray[float, float]:
+    def force_between(self, point:Point, G= 1) -> tuple[float, float]:
         ''' Calculates the force between it and another point'''
         d = self.distance_to(point)
         d2 = d * d
@@ -75,16 +73,16 @@ class Point:
         uy = (self.y - point.y)/d
         fx = df * ux
         fy = df * uy
-        return np.array([fx, fy])
+        return fx, fy
 
-    def force_between_xy(self, x: float, y: float, m: float, G: float = 1., eps: float = 1e-3) -> np.ndarray[float, float]:
+    def force_between_xy(self, x: float, y: float, m: float, G: float = 1., eps: float = 1e-3) -> tuple[float, float]:
         ''' Calculates the force between it and another point'''
-        d2 = self.distance2_xy(x, y, eps)
-        d = np.sqrt(d2)
+        d2 = self.distance2_xy(x, y) + eps * eps
+        d = math.sqrt(d2)
         df = self.mu(G) * m / d2
         fx = df * (x - self.x)/d
         fy = df * (y - self.y)/d
-        return np.array([fx, fy])
+        return fx, fy
 
     def add_force(self, fx=0, fy=0):
         ''' Adds the forces to the already present one on the point'''
@@ -158,12 +156,12 @@ class Rect:
     def distance2(self, other:Point):
         '''Distance^2 to a point from the centre'''
         other_x, other_y = other.x, other.y
-        return np.square(other_x - self.cx) + np.square(other_y - self.cy)
+        return (other_x - self.cx) * (other_x - self.cx) + (other_y - self.cy) * (other_y - self.cy)
 
     def distance_to(self, other: Point) -> float:
         '''Distance to a point from the centre'''
         other_x, other_y = other.x, other.y
-        return np.hypot(other_x - self.cx, other_y - self.cy)
+        return math.hypot(other_x - self.cx, other_y - self.cy) 
 
     def Quadrant(self, point: Point) -> str:
         '''Find which quadant the point belongs into'''
@@ -200,7 +198,7 @@ class Circ:
         circle contains Point
         '''
         point_x, point_y = point.x, point.y
-        d = np.square(self.x - point_x) + np.square(point_y - self.y)
+        d = (self.x - point_x) * (self.x - point_x) + (point_y - self.y) * (point_y - self.y)
         return d < self.r2
     
     def rect_intersect(self, other: Rect) -> bool:
@@ -216,8 +214,8 @@ class Circ:
         '''
         this circle intersect with another
         '''
-        dist2 = np.square(other.x - self.x) + np.square(other.y - self.y)
-        return (dist2 < np.square(self.r + other.r))
+        dist2 = (other.x - self.x) * (other.x - self.x) + (other.y - self.y) * (other.y - self.y)
+        return (dist2 < ((self.r + other.r) * (self.r + other.r)))
     
     def draw(self, ax, c='k', lw=1):
         '''Draws a circle'''
@@ -302,43 +300,55 @@ class QuadTree:
                 print(f'Point {point.id} triggered divide at depth {self.depth}')
             return self.insert_to_quadrant(point)
 
-    def force_on(self, point: Point, theta = 0.5, G = 1., eps= 1e-3) -> np.ndarray[float, float]:
+    def force_on(self, point: Point, theta = 0.5, G = 1., eps= 1e-3) -> tuple[float, float]:
         ''' Computes the force on the point'''
 
-        force = np.zeros(2)
+        force_x, force_y = 0, 0
 
         if self.mass ==0:
-            return force
+            return force_x, force_y
         
         if not self.divided:
             for p in self.points:
                 if p is point:
                     continue
 
-                force += point.force_between_xy(x= p.x, y= p.y, m= p.m, G= G, eps= eps)
-            
-            return force
+                fx, fy = point.force_between_xy(x= p.x, y= p.y, m= p.m, G= G, eps= eps)
+                force_x += fx
+                force_y += fy
+            return force_x, force_y
         
         else:
             dx = self.mx - point.x
             dy = self.my - point.y
-            d = np.sqrt(dx*dx + dy*dy + eps*eps)
-            s = self.bounds.w
-
-            if (s/d) < theta:
+            d2 = (dx*dx + dy*dy + eps*eps)
+            s2 = self.bounds.w * self.bounds.w
+             # s/d < theta
+            if s2 < theta * theta * d2:
                 return point.force_between_xy(x= self.mx, y= self.my, m= self.mass, G= G, eps= eps)
             
             else:
-                force += self.NW.force_on(point= point, theta= theta, G= G, eps= eps)
-                force += self.NE.force_on(point= point, theta= theta, G= G, eps= eps)
-                force += self.SW.force_on(point= point, theta= theta, G= G, eps= eps)
-                force += self.SE.force_on(point= point, theta= theta, G= G, eps= eps)
-        return force
+                fx, fy = self.NW.force_on(point= point, theta= theta, G= G, eps= eps)
+                force_x += fx
+                force_y += fy
+                fx, fy = self.NE.force_on(point= point, theta= theta, G= G, eps= eps)
+                force_x += fx
+                force_y += fy
+                fx, fy = self.SW.force_on(point= point, theta= theta, G= G, eps= eps)
+                force_x += fx
+                force_y += fy
+                fx, fy = self.SE.force_on(point= point, theta= theta, G= G, eps= eps)
+                force_x += fx
+                force_y += fy       
+        return force_x, force_y
 
     def query(self, area: Circ, found: list|None= None ) -> list:
         ''' Recursive search for points inside circle'''
         if found is None:
             found = []
+
+        if self.mass == 0:
+            return found
 
         if not area.rect_intersect(self.bounds):
             return found
@@ -453,9 +463,8 @@ class Quad_Tree_Interface_V1:
             point = Point(x = x[i].item(), y = y[i].item(), mass = m[i].item(), ID = i)
             point.vx, point.vy = vx[i].item(), vy[i].item()
             point.radius(self.density)
-            if i == self.main_mass:
+            if i == 0:
                 point.r = point.r * 0.001
-
             self.points.append(point)
 
     def define_bounds(self):
@@ -560,15 +569,15 @@ class Quad_Tree_Interface_V1:
         if m > self.main_mass -1:
             p1.r = p1.r * 0.001
             
-
-    def collision_handler(self):
-        ''' Handles collision math and removes collided points'''
+    def collision_handler(self) -> bool:
+        ''' Handles collision math and removes collided points
+            returns true if any collision happens'''
 
         collisions = self.find_collisions()
 
         collision_count = 0
-        if not collisions:
-            return
+        if len(collisions) == 0:
+            return False
         
         removed = set()
 
@@ -580,9 +589,11 @@ class Quad_Tree_Interface_V1:
 
             removed.add(p2)
             collision_count += 1
+            print(f' Collided {p1.id} and {p2.id}')
         self.points = [p for p in self.points if p not in removed]
-        print(f'Collided {collision_count:>3.0f} points in step {self.frame}')
 
+        return True
+        
     def step(self):
         '''Computes a step'''
 
@@ -602,10 +613,11 @@ class Quad_Tree_Interface_V1:
 
         if self.collide:
             # do collisions
-            self.collision_handler()
+            collision_check= self.collision_handler()
 
             # Re-build the tree after collisions
-            self.build_tree()
+            if collision_check:
+                self.build_tree()
 
         # Re-compute forces
         self.compute_force()
@@ -643,31 +655,33 @@ class Quad_Tree_Interface_V1:
         self.ax.set_axis_off()
         self.fig.subplots_adjust(left= 0, bottom= 0, right= 1, top= 1)
 
-        x0 = self.points[0].x
-        y0 = self.points[0].y
-        w = self.bounds.w
-        #self.ax.set_xlim(self.bounds.W * 1.5, self.bounds.E * 1.5)
-        #self.ax.set_ylim(self.bounds.S * 1.5, self.bounds.N * 1.5)
-        self.ax.set_xlim((x0 - w), (x0 + w))
-        self.ax.set_ylim((y0 - w), (y0 + w))
+        #x0 = self.points[0].x
+        #y0 = self.points[0].y
+        #w = self.bounds.w
+        #self.ax.set_xlim((x0 - w * 3/4), (x0 + w * 3/4))
+        #self.ax.set_ylim((y0 - w * 3/4), (y0 + w * 3/4))
         #print('test')
 
     def animate(self, frame):
         ''' Animates the gif'''
         self.step()
-        print(f'Step {self.frame:.0f} Animated')
+        if self.verbose >-1:
+            print(f'Step {self.frame:.0f} Animated')
 
         x = [p.x for p in self.points]
         y = [p.y for p in self.points]
 
         m = [float(0)] + [p.m for p in self.points[1:]]
-        sz = 2 + 5 * np.log10([mi+1 for mi in m])
+        sz = 2 + 10 * np.log1p(m)
 
         self.scatter.set_offsets(np.c_[x, y])
         self.scatter.set_sizes(sz)
 
-        #self.ax.set_xlim(min(x), max(x))
-        #self.ax.set_ylim(min(y), max(y))
+        x0 = self.points[0].x
+        y0 = self.points[0].y
+        w = self.escape_radius
+        self.ax.set_xlim((x0 - w * 3/8), (x0 + w * 3/8))
+        self.ax.set_ylim((y0 - w * 3/8), (y0 + w * 3/8))
 
         return (self.scatter,)
     
@@ -716,14 +730,16 @@ class Quad_Tree_Interface_V1:
         else:
             return fig
 
-testmethod = Quad_Tree_Interface_V1(1000)
-testmethod.capacity = 2
-testmethod.T1 = 10
+testmethod = Quad_Tree_Interface_V1(100)
+testmethod.capacity = 1
+testmethod.T1 = 1000
 testmethod.collide = True
+testmethod.density = 1e4
+testmethod.verbose = 0
 # testmethod.create_points()
 testmethod.create_points_orbiting()
-testmethod.build_tree()
-testmethod.draw()
+# testmethod.build_tree()
+# testmethod.draw()
 # testmethod.compute_force(verbose= True)
 # testmethod.tree.print_tree()
 testmethod.simulate_gif()

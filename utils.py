@@ -13,7 +13,8 @@ def generate_initial_state(nBodies: int, mu: float):
 
     nu = 2.0 * np.pi * np.random.rand(nBodies, 1)   # true anomaly
     omega = 2.0 * np.pi * np.random.rand(nBodies, 1)  # argument of periapsis
-    direction = np.random.choice([-1., 1.], size= (nBodies, 1))
+    #direction = np.random.choice([-1., 1.], size= (nBodies, 1))
+    direction = 1
 
     # --- geometry ---
     p = a * (1.0 - e**2)
