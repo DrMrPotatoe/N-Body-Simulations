@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.switch_backend("QtAgg")
 import matplotlib.patches as patches
+from matplotlib.animation import FuncAnimation, PillowWriter
 from utils import generate_initial_state
 
 
@@ -24,7 +25,7 @@ class Point:
        self.m = mass
 
        self.id = ID
-       self.r = ((mass*density)/(np.pi))**(1/2)
+       self.r = np.sqrt(mass / (density * np.pi))
 
     def __str__(self):
         '''Formated string putput'''
@@ -78,7 +79,7 @@ class Point:
         ''' Calculates the force between it and another point'''
         d2 = self.distance2_xy(x, y, eps)
         d = np.sqrt(d2)
-        df = - self.mu(G) * m / d2
+        df = self.mu(G) * m / d2
         fx = df * (x - self.x)/d
         fy = df * (y - self.y)/d
         return np.array([fx, fy])
@@ -225,7 +226,7 @@ class QuadTree:
     '''
     Recursive Quad-tree implementation
     '''
-    def __init__(self, bounds: Rect, capacity = 1, depth = 0, verbose = 0):
+    def __init__(self, bounds: Rect, capacity = 1, depth = 0, verbose= 1):
         '''Initialize the quadtee.\n
         bounds is a Rect object showing the bounds\n
         capacity is the number of points each node holds
@@ -264,7 +265,7 @@ class QuadTree:
     def insert_to_quadrant(self, point:Point):
         ''' Insert a point into the appropriate quadrant'''
         quadrant = self.bounds.Quadrant(point)
-        if self.verbose > 0:
+        if self.verbose > 1:
             print(f'Point {point.id} to {quadrant} at depth {self.depth}')
         if   quadrant == 'NW': 
             return self.NW.insert(point)
@@ -290,12 +291,12 @@ class QuadTree:
 
         if len(self.points) < self.capacity:
             self.points.append(point)
-            if self.verbose > 0:
+            if self.verbose > 1:
                 print(f'Point {point.id} appended at depth {self.depth}')
             return True
         else:
             self.divide()
-            if self.verbose > 0:
+            if self.verbose > 1:
                 print(f'Point {point.id} triggered divide at depth {self.depth}')
             return self.insert_to_quadrant(point)
 
@@ -365,25 +366,34 @@ class QuadTree:
 
 class Quad_Tree_Interface_V1:
     '''Test the Quad-Tree implementation'''
-    def __init__(self):
+    def __init__(self, npoints: int):
         self.capacity = 1
         self.points = []
         self.tree = None
+        self.verbose = 1
+        self.gif = True
+        self.frame = 0
 
+        self.npoints = npoints
         self.theta = 0.5
         self.G = 1e-6
         self.eps = 1e-3
+        self.main_mass = 3e4
+        self.escape_radius = 4 * np.log10(npoints)
+
+        self.dt = 0.1
+        self.T1 = 10
     
-    def create_points(self, npoints: int):
+    def create_points(self):
         '''Geneate a random assortment of points'''
 
-        x = np.round(np.random.normal(1, 0.2, (1, npoints)).T * 2 -1, 6)
-        y = np.round(np.random.normal(1, 0.2, (1, npoints)).T * 2 -1, 6)
+        x = np.round(np.random.normal(1, 0.2, (1, self.npoints)).T * 2 -1, 6)
+        y = np.round(np.random.normal(1, 0.2, (1, self.npoints)).T * 2 -1, 6)
 
         #x = np.round(np.random.random_sample((1, npoints)).T * 2 -1, 6)
         #y = np.round(np.random.random_sample((1, npoints)).T * 2 -1, 6)
         
-        m = np.random.normal(1, 0.2, (npoints, 1))
+        m = np.random.normal(1, 0.2, (self.npoints, 1))
 
         x_max, x_min = x.max(), x.min()
         y_max, y_min = y.max(), y.min()
@@ -394,7 +404,7 @@ class Quad_Tree_Interface_V1:
 
         self.bounds = Rect(cx, cy, w*1.01)
 
-        for i in range(npoints):
+        for i in range(self.npoints):
  
             point = Point(x = x[i].item(), y = y[i].item(), mass = m[i].item(), ID = i)
             self.points.append(point)
@@ -402,61 +412,182 @@ class Quad_Tree_Interface_V1:
 
         #print([testmethod.bounds.contains(p) for p in testmethod.points])
 
-    def create_points_orbiting(self, npoints: int, main_mass= 3e4):
+    def create_points_orbiting(self):
 
         from utils import generate_initial_state
 
-        m = np.random.rand(1, npoints+1).T
-        m[0,0] = main_mass
-        mpos, mvel = generate_initial_state(npoints, mu= main_mass * self.G)
+        m = np.random.rand(1, self.npoints+1).T
+        m[0,0] = self.main_mass
+        mpos, mvel = generate_initial_state(self.npoints, mu= self.main_mass * self.G)
         x,y = np.vstack([np.asarray([0,0]).reshape([1,2]),mpos.T]).T
         vx, vy = np.vstack([np.asarray([0,0]).reshape([1,2]),mvel.T]).T
 
-        x_max, x_min = x.max(), x.min()
-        y_max, y_min = y.max(), y.min()
-        w = max(x_max - x_min, y_max - y_min)
-
-        cx = 0.5 * (x_max + x_min)
-        cy = 0.5 * (y_max + y_min)
-
-        self.bounds = Rect(cx, cy, w*1.01)
-
-        for i in range(npoints+1):
+        for i in range(self.npoints+1):
 
             point = Point(x = x[i].item(), y = y[i].item(), mass = m[i].item(), ID = i)
             point.vx, point.vy = vx[i].item(), vy[i].item()
 
             self.points.append(point)
 
-    def build_tree(self, debug):
-        '''Builds the tree'''
-        self.tree = QuadTree(bounds= self.bounds,
-                             capacity= self.capacity)
-        
-        self.tree.verbose = debug
-        #print(20 * '=')
-        for point in self.points:
-            #print(f'Insterting Point {point.id}...')
-            self.tree.insert(point)
-            #print(f'Point {point.id} inserted')
-            #print(20 * '=')
+    def define_bounds(self):
 
-    def compute_force(self, verbose: bool= False):
+        x = [p.x for p in self.points]
+        y = [p.y for p in self.points]
+        xmax, xmin = np.max(x), np.min(x)
+        ymax, ymin = np.max(y), np.min(y)
+        w = max(xmax - xmin, ymax - ymin)
+
+        cx = 0.5 * (xmax + xmin)
+        cy = 0.5 * (ymax + ymin)
+
+        self.bounds = Rect(cx, cy, w*1.01)
+
+    def remove_escaped_points(self):
+        ''' Removes points that have excaped'''
+        escaped2 = self.escape_radius * self.escape_radius
+
+        points_before = len(self.points)
+        self.points = [
+            p for p in self.points if 
+            p.distance2(self.points[0]) < escaped2
+        ]
+        if self.verbose > 1:
+            print(f'Removed points: {points_before - len(self.points)}')
+
+    def build_tree(self):
+        '''Builds the tree'''
+
+        self.define_bounds()
+
+        self.tree = QuadTree(bounds= self.bounds,
+                             capacity= self.capacity,
+                             verbose= self.verbose)
+        
+        if self.verbose > 1: print(20 * '=')
+        for point in self.points:
+            self.tree.insert(point)
+            if self.verbose > 1:
+                print(f'Point {point.id} inserted')
+                print(20 * '=')
+
+    def compute_force(self):
         ''' Computes the force of every point'''
 
         for p in self.points:
             fx, fy = self.tree.force_on(point= p, theta= self.theta, G= self.G, eps= self.eps)
             p.set_force(fx= fx, fy= fy)
-            if verbose:
+            if self.verbose > 2:
                 print(p) 
 
-        if verbose:
+        if self.verbose > 1:
             fx_tot = sum(p.fx for p in self.points)
             fy_tot = sum(p.fy for p in self.points)
             print(f"Net force = ({fx_tot:.6e}, {fy_tot:.6e})")
 
+    def step(self):
+        '''Computes a step'''
 
-    def draw(self):
+        # Update Velocity
+        for p in self.points:
+            p.kick(self.dt)
+        
+        # Update Pos    
+        for p in self.points:
+            p.drift(self.dt)
+
+        # Remove escaped particles
+        self.remove_escaped_points()
+
+        # Re-compute tree
+        self.build_tree()
+
+        # Re-compute forces
+        self.compute_force()
+
+        # Update Velocity
+        for p in self.points:
+            p.kick(self.dt)
+        
+        self.frame += 1
+
+    def simulate(self):
+        ''' Simulates a bunch of steps'''
+
+        steps = int(self.T1 / self.dt)
+        for t in range(0, steps):
+            
+            self.build_tree()
+
+            self.compute_force()
+
+            self.step()
+
+            if self.verbose > 0:
+                print(f'T= {t} Done')
+
+    def init_plot(self):
+        ''' Initialises the gif plot area'''
+        self.fig, self.ax = plt.subplots(figsize=(9,9))
+
+        self.ax.set_aspect('equal')
+        self.ax.set_facecolor('k')
+
+        self.scatter = self.ax.scatter([], [], s=2, c= 'white')
+
+        self.ax.set_axis_off()
+        self.fig.subplots_adjust(left= 0, bottom= 0, right= 1, top= 1)
+
+        x0 = self.points[0].x
+        y0 = self.points[0].y
+        w = self.bounds.w
+        #self.ax.set_xlim(self.bounds.W * 1.5, self.bounds.E * 1.5)
+        #self.ax.set_ylim(self.bounds.S * 1.5, self.bounds.N * 1.5)
+        self.ax.set_xlim((x0 - w), (x0 + w))
+        self.ax.set_ylim((y0 - w), (y0 + w))
+        #print('test')
+
+    def animate(self, frame):
+        ''' Animates the gif'''
+        self.step()
+        print(f'Step {self.frame:.0f} Animated')
+
+        x = [p.x for p in self.points]
+        y = [p.y for p in self.points]
+
+        self.scatter.set_offsets(np.c_[x, y])
+
+        #self.ax.set_xlim(min(x), max(x))
+        #self.ax.set_ylim(min(y), max(y))
+
+        return (self.scatter,)
+    
+    def simulate_gif(self):
+        ''' Simulates the system for the GIF'''
+        self.build_tree()
+        self.compute_force()
+
+        self.init_plot()
+
+        steps = int(self.T1 / self.dt)
+
+        anim = FuncAnimation(
+            self.fig,
+            self.animate,
+            frames=steps,
+            interval=30,
+            blit=True
+        )
+
+        anim.save(
+            "QuadTree.gif",
+            writer=PillowWriter(fps=30),
+            savefig_kwargs= {
+                "facecolor": "black",
+                "pad_inches": 0
+            }
+        )
+
+    def draw(self, save= True):
         '''Draws the whole tree'''
         fig, ax = plt.subplots(figsize=(9,9))
 
@@ -470,16 +601,21 @@ class Quad_Tree_Interface_V1:
         ax.set_ylim(self.bounds.S, self.bounds.N)
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
-        plt.savefig('quadtree_test.svg', bbox_inches= 'tight')
+        if save == True:
+            plt.savefig('quadtree_test.svg', bbox_inches= 'tight')
+        else:
+            return fig
 
-testmethod = Quad_Tree_Interface_V1()
+testmethod = Quad_Tree_Interface_V1(1000)
 testmethod.capacity = 2
-# testmethod.create_points(10)
-testmethod.create_points_orbiting(100)
-testmethod.build_tree(debug= 0)
+testmethod.T1 = 10
+# testmethod.create_points()
+testmethod.create_points_orbiting()
+testmethod.build_tree()
 testmethod.draw()
-testmethod.compute_force(verbose= True)
+# testmethod.compute_force(verbose= True)
 # testmethod.tree.print_tree()
+testmethod.simulate_gif()
 
 print('EOF')
 

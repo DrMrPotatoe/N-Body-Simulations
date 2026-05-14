@@ -7,12 +7,13 @@ def generate_initial_state(nBodies: int, mu: float):
 
     # --- orbital elements ---
     a_min, a_max = 0.1, np.log10(nBodies)             # semi-major axis range
-    e_max = 0.8                         # strictly < 1
+    e_max = 0.6                         # strictly < 1
     a = a_min + (a_max - a_min) * np.random.rand(nBodies, 1)
     e = e_max * np.random.rand(nBodies, 1)
 
     nu = 2.0 * np.pi * np.random.rand(nBodies, 1)   # true anomaly
     omega = 2.0 * np.pi * np.random.rand(nBodies, 1)  # argument of periapsis
+    direction = np.random.choice([-1., 1.], size= (nBodies, 1))
 
     # --- geometry ---
     p = a * (1.0 - e**2)
@@ -34,8 +35,8 @@ def generate_initial_state(nBodies: int, mu: float):
     # --- velocities ---
     h = np.sqrt(mu * p)
 
-    vr = (mu / h) * e * np.sin(nu)
-    vt = (mu / h) * (1.0 + e * np.cos(nu))
+    vr = (mu / h) * e * np.sin(nu) 
+    vt = (mu / h) * (1.0 + e * np.cos(nu)) * direction
 
     er = r_vec / np.linalg.norm(r_vec, axis=1, keepdims=True)
     etheta = np.hstack((-er[:, 1:2], er[:, 0:1]))
