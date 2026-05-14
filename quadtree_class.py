@@ -25,7 +25,6 @@ class Point:
        self.m = mass
 
        self.id = ID
-       self.r = np.sqrt(mass / (density * np.pi))
 
     def __str__(self):
         '''Formated string putput'''
@@ -35,6 +34,9 @@ class Point:
         '''Returns mu of the body'''
         return self.m * G
     
+    def radius(self, density: float = 0.1):
+        self.r = np.sqrt(self.m / (density * np.pi))
+
     def set_force(self, fx, fy):
         ''' Defines force'''
         self.fx = fx
@@ -333,6 +335,27 @@ class QuadTree:
                 force += self.SE.force_on(point= point, theta= theta, G= G, eps= eps)
         return force
 
+    def query(self, area: Circ, found: list|None= None ) -> list:
+        ''' Recursive search for points inside circle'''
+        if found is None:
+            found = []
+
+        if not area.rect_intersect(self.bounds):
+            return found
+        
+        if self.divided:
+            self.NW.query(area= area, found= found)
+            self.NE.query(area= area, found= found)
+            self.SW.query(area= area, found= found)
+            self.SE.query(area= area, found= found)
+            
+        else:
+            for p in self.points:
+                if area.contains(p):
+                    found.append(p)
+
+        return found    
+
     def print_tree(self):
         '''Return a string representation of the tree'''
         prefix = (self.depth * 2 + 1) *  " " 
@@ -371,8 +394,9 @@ class Quad_Tree_Interface_V1:
         self.points = []
         self.tree = None
         self.verbose = 1
-        self.gif = True
         self.frame = 0
+        self.gif = True
+        self.collide = True
 
         self.npoints = npoints
         self.theta = 0.5
@@ -380,6 +404,7 @@ class Quad_Tree_Interface_V1:
         self.eps = 1e-3
         self.main_mass = 3e4
         self.escape_radius = 4 * np.log10(npoints)
+        self.density = 1e6
 
         self.dt = 0.1
         self.T1 = 10
@@ -407,6 +432,7 @@ class Quad_Tree_Interface_V1:
         for i in range(self.npoints):
  
             point = Point(x = x[i].item(), y = y[i].item(), mass = m[i].item(), ID = i)
+            point.radius(self.density)
             self.points.append(point)
             #print(f'Point {i}: ({x[i].item()}, {y[i].item()})')
 
@@ -426,6 +452,9 @@ class Quad_Tree_Interface_V1:
 
             point = Point(x = x[i].item(), y = y[i].item(), mass = m[i].item(), ID = i)
             point.vx, point.vy = vx[i].item(), vy[i].item()
+            point.radius(self.density)
+            if i == self.main_mass:
+                point.r = point.r * 0.001
 
             self.points.append(point)
 
@@ -484,6 +513,76 @@ class Quad_Tree_Interface_V1:
             fy_tot = sum(p.fy for p in self.points)
             print(f"Net force = ({fx_tot:.6e}, {fy_tot:.6e})")
 
+    def find_collisions(self) -> list:
+        ''' Find all collisions in the set of points'''
+
+        collisions = []
+        checked = set()
+
+        max_r = np.max([p.r for p in self.points])
+
+        for p in self.points:
+            search_area = Circ(p.x, p.y, p.r + max_r)
+            
+            nearby_points = self.tree.query(search_area)
+
+            for other in nearby_points:
+                if other is p:
+                    continue
+                
+                # avoid duplicate pairs 
+                pair = tuple(sorted((p.id, other.id)))
+                if pair in checked:
+                    continue
+
+                checked.add(pair)
+                if p.collides(other):
+                    collisions.append((p, other))
+        
+        return collisions
+    
+    def merge_points(self, p1: Point, p2: Point):
+        ''' Merges 2 points into the first'''
+
+        m1, m2 = p1.m, p2.m
+
+        m = m1 + m2
+
+        p1.x = ((p1.x * m1) + (p2.x * m2)) / m
+        p1.y = ((p1.y * m1) + (p2.y * m2)) / m
+
+        p1.vx = ((p1.vx * m1) + (p2.vx * m2)) / m
+        p1.vy = ((p1.vy * m1) + (p2.vy * m2)) / m
+
+        p1.id = p1.id
+        p1.m = m
+        p1.radius(self.density)
+        if m > self.main_mass -1:
+            p1.r = p1.r * 0.001
+            
+
+    def collision_handler(self):
+        ''' Handles collision math and removes collided points'''
+
+        collisions = self.find_collisions()
+
+        collision_count = 0
+        if not collisions:
+            return
+        
+        removed = set()
+
+        for p1, p2 in collisions:
+            if p1 in removed or p2 in removed:
+                continue
+
+            self.merge_points(p1, p2)
+
+            removed.add(p2)
+            collision_count += 1
+        self.points = [p for p in self.points if p not in removed]
+        print(f'Collided {collision_count:>3.0f} points in step {self.frame}')
+
     def step(self):
         '''Computes a step'''
 
@@ -500,6 +599,13 @@ class Quad_Tree_Interface_V1:
 
         # Re-compute tree
         self.build_tree()
+
+        if self.collide:
+            # do collisions
+            self.collision_handler()
+
+            # Re-build the tree after collisions
+            self.build_tree()
 
         # Re-compute forces
         self.compute_force()
@@ -532,7 +638,7 @@ class Quad_Tree_Interface_V1:
         self.ax.set_aspect('equal')
         self.ax.set_facecolor('k')
 
-        self.scatter = self.ax.scatter([], [], s=2, c= 'white')
+        self.scatter = self.ax.scatter([], [], s=[], c= 'white')
 
         self.ax.set_axis_off()
         self.fig.subplots_adjust(left= 0, bottom= 0, right= 1, top= 1)
@@ -554,7 +660,11 @@ class Quad_Tree_Interface_V1:
         x = [p.x for p in self.points]
         y = [p.y for p in self.points]
 
+        m = [float(0)] + [p.m for p in self.points[1:]]
+        sz = 2 + 5 * np.log10([mi+1 for mi in m])
+
         self.scatter.set_offsets(np.c_[x, y])
+        self.scatter.set_sizes(sz)
 
         #self.ax.set_xlim(min(x), max(x))
         #self.ax.set_ylim(min(y), max(y))
@@ -609,6 +719,7 @@ class Quad_Tree_Interface_V1:
 testmethod = Quad_Tree_Interface_V1(1000)
 testmethod.capacity = 2
 testmethod.T1 = 10
+testmethod.collide = True
 # testmethod.create_points()
 testmethod.create_points_orbiting()
 testmethod.build_tree()
