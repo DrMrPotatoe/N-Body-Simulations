@@ -1,3 +1,14 @@
+'''
+Class implementation of a quadtree, used for N-Body simulation.
+Big thanks to:
+https://thecodingtrain.com/challenges/98-quadtree
+https://scipython.com/blog/quadtrees-2-implementation-in-python/
+https://github.com/alessialin/BarnesHut-py/tree/main
+https://github.com/DeadlockCode/barnes-hut
+
+'''
+
+
 from __future__ import annotations
 import numpy as np
 import math
@@ -769,21 +780,6 @@ class Quad_Tree_Interface_V1:
         else:
             return fig
 
-testmethod = Quad_Tree_Interface_V1(1000)
-testmethod.capacity = 1
-testmethod.T1 = 1000
-testmethod.collide = True
-testmethod.density = 1e4
-testmethod.verbose = 0
-# testmethod.create_points()
-testmethod.create_points_orbiting()
-# testmethod.build_tree()
-# testmethod.draw()
-# testmethod.compute_force(verbose= True)
-# testmethod.tree.print_tree()
-# testmethod.gif_simulate()
-testmethod.video_simulate(fps= 60)
 
-print('EOF')
 
         
