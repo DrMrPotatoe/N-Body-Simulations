@@ -2,9 +2,9 @@ from __future__ import annotations
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-plt.switch_backend("QtAgg")
+plt.switch_backend("Agg")
 import matplotlib.patches as patches
-from matplotlib.animation import FuncAnimation, PillowWriter
+from matplotlib.animation import FuncAnimation, PillowWriter, FFMpegWriter
 
 class Point:
     '''
@@ -102,8 +102,8 @@ class Point:
         self.vx += ax * dt
         self.vy += ay * dt
 
-    def kick(self, dt: float):
-        ''' Give a kick to the point'''
+    def half_kick(self, dt: float):
+        ''' Give a half kick to the point'''
         self.vx += 0.5 * self.fx / self.m * dt
         self.vy += 0.5 * self.fy / self.m * dt
 
@@ -589,7 +589,7 @@ class Quad_Tree_Interface_V1:
 
             removed.add(p2)
             collision_count += 1
-            print(f' Collided {p1.id} and {p2.id}')
+            # print(f' Collided {p1.id} and {p2.id}')
         self.points = [p for p in self.points if p not in removed]
 
         return True
@@ -599,7 +599,7 @@ class Quad_Tree_Interface_V1:
 
         # Update Velocity
         for p in self.points:
-            p.kick(self.dt)
+            p.half_kick(self.dt)
         
         # Update Pos    
         for p in self.points:
@@ -624,7 +624,7 @@ class Quad_Tree_Interface_V1:
 
         # Update Velocity
         for p in self.points:
-            p.kick(self.dt)
+            p.half_kick(self.dt)
         
         self.frame += 1
 
@@ -662,7 +662,7 @@ class Quad_Tree_Interface_V1:
         #self.ax.set_ylim((y0 - w * 3/4), (y0 + w * 3/4))
         #print('test')
 
-    def animate(self, frame):
+    def gif_animate(self, frame):
         ''' Animates the gif'''
         self.step()
         if self.verbose >-1:
@@ -685,7 +685,7 @@ class Quad_Tree_Interface_V1:
 
         return (self.scatter,)
     
-    def simulate_gif(self):
+    def gif_simulate(self):
         ''' Simulates the system for the GIF'''
         self.build_tree()
         self.compute_force()
@@ -696,7 +696,7 @@ class Quad_Tree_Interface_V1:
 
         anim = FuncAnimation(
             self.fig,
-            self.animate,
+            self.gif_animate,
             frames=steps,
             interval=30,
             blit=True
@@ -710,6 +710,45 @@ class Quad_Tree_Interface_V1:
                 "pad_inches": 0
             }
         )
+
+    def video_simulate(self, filename= 'QuadTree.mp4', fps= 60):
+        ''' Simulates the system and saves to video'''
+
+        self.build_tree()
+        self.compute_force()
+        self.init_plot()
+
+        steps = int(self.T1 / self.dt)
+
+        writer = FFMpegWriter(fps= fps, bitrate=-1)
+
+        with writer.saving(self.fig, outfile= filename, dpi= 300):
+            for i in range(steps):
+
+                self.step()
+
+                if i % math.floor(math.sqrt(steps)) == 0:
+                    print(f'Frame {i} / {steps} ({len(self.points) } points)')
+
+                x = np.fromiter((p.x for p in self.points), dtype=float)
+                y = np.fromiter((p.y for p in self.points), dtype=float)
+
+                m = [0.0] + [p.m for p in self.points[1:]]
+                sz = 2 + 10 * np.log1p(m)
+
+                offset = np.zeros((len(x), 2))
+                offset[:, 0] = x
+                offset[:, 1] = y
+                self.scatter.set_offsets(offset)
+                self.scatter.set_sizes(sz)
+
+                x0 = self.points[0].x
+                y0 = self.points[0].y
+                w = self.escape_radius
+                self.ax.set_xlim((x0 - w * 3/8), (x0 + w * 3/8))
+                self.ax.set_ylim((y0 - w * 3/8), (y0 + w * 3/8))
+
+                writer.grab_frame(facecolor= "black")
 
     def draw(self, save= True):
         '''Draws the whole tree'''
@@ -730,7 +769,7 @@ class Quad_Tree_Interface_V1:
         else:
             return fig
 
-testmethod = Quad_Tree_Interface_V1(100)
+testmethod = Quad_Tree_Interface_V1(1000)
 testmethod.capacity = 1
 testmethod.T1 = 1000
 testmethod.collide = True
@@ -742,7 +781,8 @@ testmethod.create_points_orbiting()
 # testmethod.draw()
 # testmethod.compute_force(verbose= True)
 # testmethod.tree.print_tree()
-testmethod.simulate_gif()
+# testmethod.gif_simulate()
+testmethod.video_simulate(fps= 60)
 
 print('EOF')
 
