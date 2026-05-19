@@ -4,7 +4,7 @@ Vectorized Implementation of A quadtree
 
 from __future__ import annotations
 import numpy as np
-import math
+from dataclasses import dataclass
 
 
 #####################################
@@ -44,6 +44,9 @@ P_rad = np.full(P_n, np.nan)
 # Next particle in node:
 P_next = np.full(P_n, -1, dtype= np.int32)
 
+# If particle is alive
+P_alive = np.ones(P_n, dtype= np.bool_)
+
 
 #####################################
 # Node Data #########################
@@ -69,7 +72,7 @@ N_first_child = np.full(N_n, -1, dtype= np.int32)
 # Node Parent
 N_parent = np.full(N_n, -1, dtype= np.int32)
 
-# Tree Occupation
+# TREE OCCUPATION
 # Node Points
 N_first_particle = np.full(N_n, -1, dtype= np.int32)
 # Number of points in the node
@@ -81,3 +84,24 @@ N_is_leaf = np.ones(N_n, dtype= np.bool_)
 
 
 print('EOF')
+
+@dataclass
+class config:
+    ''' Simulation parameters and constants used '''
+
+    # Particle count
+    P_n: int = 1000
+
+    # Gravitational Paramerter
+    G: float = 1e-6
+
+    # Density
+    density: float = 1e6
+
+    # Total Integration time
+    T1: float = 100
+
+    # Time step
+    dT: float = 0.1
+
+    # Barnes-Hut Parameters
