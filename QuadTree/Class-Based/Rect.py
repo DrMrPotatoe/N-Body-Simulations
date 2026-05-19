@@ -32,7 +32,7 @@ class Rect:
     
     def intersects(self, other:Rect) -> bool:
         '''
-        Whether a rectangole intersects this
+        Whether a rectangle intersects this
         '''
         return not (self.E < other.W or
                     other.E < self.W or

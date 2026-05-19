@@ -31,6 +31,7 @@ class Point:
         return self.m * G
     
     def radius(self, density: float = 0.1):
+        ''' Updates the radius of the body'''
         self.r = np.sqrt(self.m / (density * np.pi))
 
     def set_force(self, fx, fy):
@@ -66,8 +67,8 @@ class Point:
         d = self.distance_to(point)
         d2 = d * d
         df = - self.mu(G) * point.m / d2
-        ux = (self.x - point.x)/d
-        uy = (self.y - point.y)/d
+        ux = (self.x - point.x)/d #unit vector x component
+        uy = (self.y - point.y)/d #unit vector y component
         fx = df * ux
         fy = df * uy
         return fx, fy

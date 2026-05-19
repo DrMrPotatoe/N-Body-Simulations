@@ -183,19 +183,19 @@ class QuadTree_Interface:
             p1.r = p1.r * 0.001
             
     def collision_handler(self) -> bool:
-        ''' Handles collision math and removes collided points
+        ''' Handles collision math and removes collided points \n
             returns true if any collision happens'''
 
         collisions = self.find_collisions()
 
         collision_count = 0
-        if len(collisions) == 0:
+        if len(collisions) == 0: # If no collisions occur:
             return False
         
-        removed = set()
+        removed = set() # Set of removed points due to collisions
 
         for p1, p2 in collisions:
-            if p1 in removed or p2 in removed:
+            if p1 in removed or p2 in removed: # Only allow one collision with the same body at every frame
                 continue
 
             self.merge_points(p1, p2)
@@ -204,8 +204,10 @@ class QuadTree_Interface:
             collision_count += 1
             # print(f' Collided {p1.id} and {p2.id}')
         self.points = [p for p in self.points if p not in removed]
-
-        return True
+        if collision_count == 0:
+            return False
+        else: 
+            return True
         
     def step(self):
         '''Computes a step'''
@@ -267,13 +269,6 @@ class QuadTree_Interface:
 
         self.ax.set_axis_off()
         self.fig.subplots_adjust(left= 0, bottom= 0, right= 1, top= 1)
-
-        #x0 = self.points[0].x
-        #y0 = self.points[0].y
-        #w = self.bounds.w
-        #self.ax.set_xlim((x0 - w * 3/4), (x0 + w * 3/4))
-        #self.ax.set_ylim((y0 - w * 3/4), (y0 + w * 3/4))
-        #print('test')
 
     def gif_animate(self, frame):
         ''' Animates the gif'''
