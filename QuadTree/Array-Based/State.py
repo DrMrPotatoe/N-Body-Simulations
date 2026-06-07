@@ -1,107 +1,101 @@
-'''
-Vectorized Implementation of A quadtree
-'''
-
 from __future__ import annotations
 import numpy as np
 from dataclasses import dataclass
+from Config import Config
+
+@dataclass(slots= True)
+class Particles:
+    x: np.ndarray
+    y: np.ndarray
+
+    vx: np.ndarray
+    vy: np.ndarray
+
+    fx: np.ndarray
+    fy: np.ndarray
+
+    mass: np.ndarray
+    radius: np.ndarray
+
+    next: np.ndarray
+    alive: np.ndarray
 
 
-#####################################
-# Simulation Data ###################
-#####################################
+@dataclass(slots= True)
+class Nodes:
+    x: np.ndarray
+    y: np.ndarray
+    width: np.ndarray
+    
+    mass: np.ndarray
+    mx: np.ndarray
+    my: np.ndarray
 
-# Number of points
-P_n= 100
+    first_child: np.ndarray
+    first_particle: np.ndarray
 
-# Number of Nodes
-N_n = P_n * 8
+    count: np.ndarray
+    leaf: np.ndarray
 
-# Node Capacity
-N_capacity = 4
+@dataclass(slots= True)
+class state:
+    particles: Particles
+    nodes: Nodes
 
+    root: int
+    node_count: int
 
-#####################################
-# Particle Data #####################
-#####################################
+    time: float
+    step: int
 
-# Particle x and y position
-P_x = np.full(P_n, np.nan)
-P_y = np.full(P_n, np.nan)
+    @classmethod
+    def allocate(cls, cfg: Config):
 
-# Particle x and y velocity
-P_vx = np.full(P_n, np.nan)
-P_vy = np.full(P_n, np.nan)
+        P = Particles(
+            x=np.zeros(cfg.n_particles),
+            y=np.zeros(cfg.n_particles),
 
-# Particle x and y force
-P_fx = np.full(P_n, np.nan)
-P_fy = np.full(P_n, np.nan)
+            vx=np.zeros(cfg.n_particles),
+            vy=np.zeros(cfg.n_particles),
 
-# Particle mass and radius
-P_mass = np.full(P_n, np.nan)
-P_rad = np.full(P_n, np.nan)
+            fx=np.zeros(cfg.n_particles),
+            fy=np.zeros(cfg.n_particles),
 
-# Next particle in node:
-P_next = np.full(P_n, -1, dtype= np.int32)
+            mass=np.zeros(cfg.n_particles),
+            radius=np.zeros(cfg.n_particles),
 
-# If particle is alive
-P_alive = np.ones(P_n, dtype= np.bool_)
+            next=np.full(cfg.n_particles, -1, dtype=np.int32),
 
+            alive=np.ones(cfg.n_particles, dtype=np.bool_)
+        )
 
-#####################################
-# Node Data #########################
-#####################################
+        N = Nodes(
+            x=np.zeros(cfg.max_nodes),
+            y=np.zeros(cfg.max_nodes),
 
-# TREE GEOMETRY
-# Node x and y centre positions
-N_x = np.full(N_n, np.nan)
-N_y = np.full(N_n, np.nan)
-# Node width 
-N_width = np.full(N_n, np.nan)
+            width=np.zeros(cfg.max_nodes),
 
-# TREE MASS ACCUMULATION
-# Node centre of mass x and y positions
-N_com_x = np.zeros(N_n)
-N_com_y = np.zeros(N_n)
-# Node mass
-N_mass = np.zeros(N_n)
+            mass=np.zeros(cfg.max_nodes),
 
-# TREE TOPOLOGY
-# Node children (+0->TL, +1->TR, +2->BL, +3->BR)
-N_first_child = np.full(N_n, -1, dtype= np.int32)
-# Node Parent
-N_parent = np.full(N_n, -1, dtype= np.int32)
+            mx=np.zeros(cfg.max_nodes),
+            my=np.zeros(cfg.max_nodes),
 
-# TREE OCCUPATION
-# Node Points
-N_first_particle = np.full(N_n, -1, dtype= np.int32)
-# Number of points in the node
-N_point_count = np.zeros(N_n, dtype= np.int32)
-# Node is leaf
-N_is_leaf = np.ones(N_n, dtype= np.bool_)
+            child=np.full(cfg.max_nodes, -1, dtype=np.int32),
 
+            particle=np.full(cfg.max_nodes, -1, dtype=np.int32),
 
+            count=np.zeros(cfg.max_nodes, dtype=np.int32),
 
+            leaf=np.ones(cfg.max_nodes, dtype=np.bool_)
+        )
 
-print('EOF')
+        return cls(
+            particles=P,
+            nodes=N,
 
-@dataclass
-class config:
-    ''' Simulation parameters and constants used '''
+            root=0,
+            node_count=1,
 
-    # Particle count
-    P_n: int = 1000
-
-    # Gravitational Paramerter
-    G: float = 1e-6
-
-    # Density
-    density: float = 1e6
-
-    # Total Integration time
-    T1: float = 100
-
-    # Time step
-    dT: float = 0.1
-
-    # Barnes-Hut Parameters
+            time=0.0,
+            step=0
+        )
