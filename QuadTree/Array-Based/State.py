@@ -34,16 +34,20 @@ class Nodes:
     first_child: np.ndarray
     first_particle: np.ndarray
 
-    count: np.ndarray
+    particle_count: np.ndarray
     leaf: np.ndarray
 
 @dataclass(slots= True)
-class state:
+class State:
+    '''
+    Particle and Node information holder
+    '''
     particles: Particles
     nodes: Nodes
 
     root: int
     node_count: int
+    n_alive: int
 
     time: float
     step: int
@@ -65,27 +69,22 @@ class state:
             radius=np.zeros(cfg.n_particles),
 
             next=np.full(cfg.n_particles, -1, dtype=np.int32),
-
             alive=np.ones(cfg.n_particles, dtype=np.bool_)
         )
 
         N = Nodes(
             x=np.zeros(cfg.max_nodes),
             y=np.zeros(cfg.max_nodes),
-
             width=np.zeros(cfg.max_nodes),
 
             mass=np.zeros(cfg.max_nodes),
-
             mx=np.zeros(cfg.max_nodes),
             my=np.zeros(cfg.max_nodes),
 
-            child=np.full(cfg.max_nodes, -1, dtype=np.int32),
-
-            particle=np.full(cfg.max_nodes, -1, dtype=np.int32),
+            first_child=np.full(cfg.max_nodes, -1, dtype=np.int32),
+            first_particle=np.full(cfg.max_nodes, -1, dtype=np.int32),
 
             count=np.zeros(cfg.max_nodes, dtype=np.int32),
-
             leaf=np.ones(cfg.max_nodes, dtype=np.bool_)
         )
 
@@ -95,6 +94,7 @@ class state:
 
             root=0,
             node_count=1,
+            n_alive= cfg.n_particles,
 
             time=0.0,
             step=0

@@ -1,15 +1,13 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
 import math
+from pathlib import Path
 
 
 @dataclass(slots=True, frozen=True)
 class Config:
     """
     Global simulation configuration.
-
-    Immutable after creation.
     """
 
     # PHYSICS
@@ -36,6 +34,7 @@ class Config:
     # OUTPUT
     fps: int = 60
     verbose: int = 0
+    outdir: str = './outputs/'
 
     def __post_init__(self):
 
@@ -52,7 +51,9 @@ class Config:
         )
 
         # Dataclass updates
-
         object.__setattr__(self, "n_steps", n_steps)
         object.__setattr__(self, "max_nodes", max_nodes)
         object.__setattr__(self, "escape_radius", escape_radius)
+
+        # Other updates:
+        Path(self.outdir).mkdir(parents=True, exist_ok= True)
