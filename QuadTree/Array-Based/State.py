@@ -47,7 +47,6 @@ class State:
 
     root: int
     node_count: int
-    n_alive: int
 
     time: float
     step: int
@@ -84,7 +83,7 @@ class State:
             first_child=np.full(cfg.max_nodes, -1, dtype=np.int32),
             first_particle=np.full(cfg.max_nodes, -1, dtype=np.int32),
 
-            count=np.zeros(cfg.max_nodes, dtype=np.int32),
+            particle_count=np.zeros(cfg.max_nodes, dtype=np.int32),
             leaf=np.ones(cfg.max_nodes, dtype=np.bool_)
         )
 
@@ -94,7 +93,6 @@ class State:
 
             root=0,
             node_count=1,
-            n_alive= cfg.n_particles,
 
             time=0.0,
             step=0

@@ -1,5 +1,6 @@
 import sys
 sys.dont_write_bytecode= True
+import numpy as np
 
 from Config import Config
 from State import State
@@ -11,14 +12,17 @@ def allocate_children(state: State, parent: int) -> int:
     '''
 
     last_node = state.node_count
+    
 
     if last_node + 4 > len(state.nodes.x):
         raise RuntimeError('Max n_count exceeded')
     
+    state.node_count += 4
+
     state.nodes.first_child[parent] = last_node
     state.nodes.leaf[parent] = False
 
-    # Updaating children:
+    # Updating children:
 
     state.nodes.mass[last_node : last_node + 4] = 0.0
     state.nodes.mx[last_node : last_node + 4] = 0.0
@@ -27,10 +31,12 @@ def allocate_children(state: State, parent: int) -> int:
     state.nodes.first_child[last_node : last_node + 4] = -1
     state.nodes.first_particle[last_node : last_node + 4] = -1
 
-    state.nodes.count[last_node : last_node + 4] = 0
+    state.nodes.particle_count[last_node : last_node + 4] = 0
     state.nodes.leaf[last_node : last_node + 4] = True
 
-    return last_node + 4
+    
+
+    return last_node 
 
 
 def get_quadrant(state: State, node: int, particle: int) -> int:
@@ -53,7 +59,7 @@ def get_quadrant(state: State, node: int, particle: int) -> int:
     return east + 2 * north
 
 
-def subdivide(state: State, node: int) -> None:
+def subdivide(state: State, node: int, cfg: Config) -> None:
     '''
     Subdivides a node into its children, and allocates the particles accordignly.
     '''
@@ -94,6 +100,7 @@ def subdivide(state: State, node: int) -> None:
     while p != -1:
 
         next_p = state.particles.next[p]
+        state.particles.next[p] = -1
 
         quadrant = get_quadrant(state= state,
                                 node= node,
@@ -101,18 +108,61 @@ def subdivide(state: State, node: int) -> None:
         
         child = last_node + quadrant
 
-        state.particles.next[p] = state.nodes.first_particle[child]
-        state.nodes.first_particle[child] = p
-
-        state.nodes.particle_count[child] += 1
+        insert_particle(state= state,
+                        node= child,
+                        particle= p,
+                        cfg= cfg)
 
         p = next_p
 
 
-def insert_particle(state: State, node: int, particle: int, cfg) -> None:
-    pass
-        
+def insert_particle(state: State, node: int, particle: int, cfg: Config) -> None:
+    '''
+    Inserts particles into the appropriate quadrant, and orders a subdivide if needed
+    '''
 
+    if state.nodes.leaf[node]:
+
+        state.particles.next[particle] = state.nodes.first_particle[node]
+        state.nodes.first_particle[node] = particle
+
+        state.nodes.particle_count[node] += 1
+
+        if state.nodes.particle_count[node] > cfg.node_capacity:
+
+            subdivide(state= state, 
+                      node= node,
+                      cfg= cfg)
+        
+        return
+    
+    quadrant = get_quadrant(state= state, 
+                            node= node, 
+                            particle= particle)
+
+    child = state.nodes.first_child[node] + quadrant
+
+    insert_particle(state= state, 
+                    node= child, 
+                    particle= particle, 
+                    cfg= cfg)
+
+
+def build_tree(state: State, cfg: Config) -> None:
+    '''
+    Builds the tree from the state and config data classes
+    '''
+    reset_tree(state= state)
+
+    for p in range(cfg.n_particles):
+
+        if not state.particles.alive[p]:
+            continue
+
+        insert_particle(state= state,
+                        node= state.root,
+                        particle= p,
+                        cfg= cfg)
 
 
 def reset_tree(state: State) -> None:
@@ -121,4 +171,110 @@ def reset_tree(state: State) -> None:
     back through node 1, forcing the tree to reset whiile keeping
     memory allocations
     '''
-    state.node_count = 1
+
+    root = state.root
+  
+    state.nodes.first_child[root] = -1
+    state.nodes.first_particle[root] = -1
+
+    state.nodes.particle_count[root] = 0
+    state.nodes.leaf[root] = True
+
+    state.nodes.mx[root] = 0.0
+    state.nodes.my[root] = 0.0
+    state.nodes.mass[root] = 0.0
+
+    state.node_count = root + 1
+
+    initialize_root(state= state)
+
+
+def initialize_root(state: State) -> None:
+    ''' 
+    Initialises the root node, with a width determined by particles.
+    '''
+    alive = state.particles.alive
+
+    x = state.particles.x[alive]
+    y = state.particles.y[alive]
+
+    xmin = np.min(x)
+    xmax = np.max(x)
+
+    ymin = np.min(y)
+    ymax = np.max(y)
+
+    cx = 0.5 * (xmin + xmax)
+    cy = 0.5 * (ymin + ymax)
+
+    width = max(xmax - xmin, ymax - ymin, 1e-3) * 1.1
+
+    root = state.root
+
+    state.nodes.x[root] = cx
+    state.nodes.y[root] = cy
+
+    state.nodes.width[root] = width
+
+
+def validate_tree(state: State) -> None:
+    '''
+    Validates the tree. Includes:
+
+    appearance;
+    node count;
+    
+    '''
+    # Each particle appears once in the tree
+
+    seen = np.zeros(len(state.particles.x), dtype= bool)
+
+    total = 0
+
+    for node in range(state.root, state.node_count):
+        
+        if not state.nodes.leaf[node]:
+            continue
+
+        p = state.nodes.first_particle[node]
+
+        while p != -1:
+
+            if seen[p]:
+                raise RuntimeError(f" Particle {p} has multiple appearances")
+            
+            seen[p] = True
+            total += 1
+
+            p = state.particles.next[p]
+
+    alive = np.count_nonzero(state.particles.alive)
+
+    if total != alive:
+        raise RuntimeError(f"Tree contains {total} particles but {alive} are alive")
+    
+    # Node Counts
+
+    for node in range(state.root, state.node_count):
+
+        if not state.nodes.leaf[node]:
+            continue
+
+        actual = 0
+
+        p = state.nodes.first_particle[node]
+
+        while p != -1:
+
+            actual += 1
+            p = state.particles.next[p]
+
+        if actual != state.nodes.particle_count[node]:
+
+            raise RuntimeError(
+                f"Node {node}: "
+                f"count={state.nodes.particle_count[node]}, "
+                f"actual={actual}"
+            )
+
+
