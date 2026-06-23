@@ -12,10 +12,11 @@ def allocate_children(state: State, parent: int) -> int:
     '''
 
     last_node = state.node_count
+    parent_depth = state.nodes.depth[parent]
     
 
     if last_node + 4 > len(state.nodes.x):
-        raise RuntimeError('Max n_count exceeded')
+        raise RuntimeError(f'Max n_count exceeded ({last_node + 4}, p= {state.nodes.first_particle[parent]})')
     
     state.node_count += 4
 
@@ -33,8 +34,7 @@ def allocate_children(state: State, parent: int) -> int:
 
     state.nodes.particle_count[last_node : last_node + 4] = 0
     state.nodes.leaf[last_node : last_node + 4] = True
-
-    
+    state.nodes.depth[last_node : last_node + 4] = parent_depth + 1
 
     return last_node 
 
@@ -121,6 +121,18 @@ def insert_particle(state: State, node: int, particle: int, cfg: Config) -> None
     Inserts particles into the appropriate quadrant, and orders a subdivide if needed
     '''
 
+    pm = state.particles.mass[particle]
+    px = state.particles.x[particle]
+    py = state.particles.y[particle]
+
+    nm = state.nodes.mass[particle]
+    nx = state.nodes.mx[particle]
+    ny = state.nodes.my[particle]
+
+    state.nodes.mass[node] += pm
+    state.nodes.mx[node] = ((nx*nm + px*pm) / (nm+pm))
+    state.nodes.my[node] = ((ny*nm + py*pm) / (nm+pm))
+
     if state.nodes.leaf[node]:
 
         state.particles.next[particle] = state.nodes.first_particle[node]
@@ -179,6 +191,7 @@ def reset_tree(state: State) -> None:
 
     state.nodes.particle_count[root] = 0
     state.nodes.leaf[root] = True
+    state.nodes.depth[root] = 0
 
     state.nodes.mx[root] = 0.0
     state.nodes.my[root] = 0.0

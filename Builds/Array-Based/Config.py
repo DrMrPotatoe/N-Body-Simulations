@@ -34,7 +34,7 @@ class Config:
     # OUTPUT
     fps: int = 60
     verbose: int = 0
-    outdir: str = './outputs/'
+    outdir: str = './Builds/Array-Based/outputs/'
 
     def __post_init__(self):
 

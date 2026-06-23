@@ -28,9 +28,6 @@ def test_clustered(state: State, cfg: Config, n_tests: int = 100, seed: int=  42
         state.particles.x[:] = np.concatenate([cluster_x, random_x])
         state.particles.y[:] = np.concatenate([cluster_y, random_y])
 
-        state.particles.alive[:] = True
-        state.particles.next[:] = -1
-
         build_tree(state= state, cfg= cfg)
         validate_tree(state= state)
 

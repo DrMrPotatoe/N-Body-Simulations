@@ -36,6 +36,7 @@ class Nodes:
 
     particle_count: np.ndarray
     leaf: np.ndarray
+    depth: np.ndarray
 
 @dataclass(slots= True)
 class State:
@@ -84,7 +85,8 @@ class State:
             first_particle=np.full(cfg.max_nodes, -1, dtype=np.int32),
 
             particle_count=np.zeros(cfg.max_nodes, dtype=np.int32),
-            leaf=np.ones(cfg.max_nodes, dtype=np.bool_)
+            leaf=np.ones(cfg.max_nodes, dtype=np.bool_),
+            depth=np.zeros(cfg.max_nodes, dtype=np.int32)
         )
 
         return cls(
