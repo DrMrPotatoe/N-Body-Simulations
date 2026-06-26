@@ -50,6 +50,7 @@ def initial_state_cluster_outliers(state= State, cluster_frac= 0.8, sigma= 0.05,
 
     state.particles.x[:] = np.concatenate([cluster_x, random_x])
     state.particles.y[:] = np.concatenate([cluster_y, random_y])
+    state.particles.mass[:]= rng.uniform(size= n)
 
 def initial_state_galaxies(state: State, separation= 5, galaxies=3, sigma= 0.3, seed= 42):
     '''Generates 2 clusters of points separation distance away'''

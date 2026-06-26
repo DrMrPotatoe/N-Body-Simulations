@@ -193,9 +193,10 @@ def reset_tree(state: State) -> None:
     state.nodes.leaf[root] = True
     state.nodes.depth[root] = 0
 
-    state.nodes.mx[root] = 0.0
-    state.nodes.my[root] = 0.0
-    state.nodes.mass[root] = 0.0
+    state.nodes.mx[:] = 0.0
+    state.nodes.my[:] = 0.0
+    state.nodes.mass[:] = 0.0
+
 
     state.node_count = root + 1
 
@@ -236,6 +237,7 @@ def validate_tree(state: State) -> None:
 
     appearance;
     node count;
+    mass;
     
     '''
     # Each particle appears once in the tree
@@ -289,5 +291,11 @@ def validate_tree(state: State) -> None:
                 f"count={state.nodes.particle_count[node]}, "
                 f"actual={actual}"
             )
+        
+    alive_mask = state.particles.alive
+    mass_total = sum(state.particles.mass[alive_mask])
+    if mass_total != state.nodes.mass[state.root]:
+        raise RuntimeError(f"Tree contains {state.nodes.mass[state.root]} mass but it should contain {mass_total}")
+
 
 
