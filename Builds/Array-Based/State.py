@@ -11,8 +11,8 @@ class Particles:
     vx: np.ndarray
     vy: np.ndarray
 
-    fx: np.ndarray
-    fy: np.ndarray
+    ax: np.ndarray
+    ay: np.ndarray
 
     mass: np.ndarray
     radius: np.ndarray
@@ -62,8 +62,8 @@ class State:
             vx=np.zeros(cfg.n_particles),
             vy=np.zeros(cfg.n_particles),
 
-            fx=np.zeros(cfg.n_particles),
-            fy=np.zeros(cfg.n_particles),
+            ax=np.zeros(cfg.n_particles),
+            ay=np.zeros(cfg.n_particles),
 
             mass=np.zeros(cfg.n_particles),
             radius=np.zeros(cfg.n_particles),

@@ -76,10 +76,10 @@ def subdivide(state: State, node: int, cfg: Config) -> None:
     child_width = width * 0.5
     offset = width * 0.25
 
-    child_offset_key = ((-1, -1), 
+    child_offset_key = ((-1, -1),
                         (+1, -1),
                         (-1, +1),
-                        (+1, +1))
+                        (+1, +1)) 
     
     for  i, (dx, dy) in enumerate(child_offset_key):
 
@@ -125,9 +125,9 @@ def insert_particle(state: State, node: int, particle: int, cfg: Config) -> None
     px = state.particles.x[particle]
     py = state.particles.y[particle]
 
-    nm = state.nodes.mass[particle]
-    nx = state.nodes.mx[particle]
-    ny = state.nodes.my[particle]
+    nm = state.nodes.mass[node]
+    nx = state.nodes.mx[node]
+    ny = state.nodes.my[node]
 
     state.nodes.mass[node] += pm
     state.nodes.mx[node] = ((nx*nm + px*pm) / (nm+pm))

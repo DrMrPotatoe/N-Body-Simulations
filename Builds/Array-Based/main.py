@@ -15,10 +15,6 @@ cfg = Config(n_particles= 1000,
 
 state = State.allocate(cfg= cfg)
 
-test_clustered(state= state,
-               cfg= cfg,
-               n_tests= 10)
-'''
 initial_state_galaxies(state= state,
                        sigma= 1,
                        galaxies= 3)
@@ -33,6 +29,11 @@ plot_tree(state= state,
           draw_all_bounds= False,
           depth_colour= True,
           save_name=f'Test_{date}.svg')
+'''
+
+test_clustered(state= state,
+               cfg= cfg,
+               n_tests= 10)
 
 '''
 print(' eof')
