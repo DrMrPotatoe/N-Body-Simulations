@@ -34,7 +34,8 @@ class Nodes:
     first_child: np.ndarray
     first_particle: np.ndarray
 
-    particle_count: np.ndarray
+    local_particle_count: np.ndarray
+    subtree_particle_count: np.ndarray
     leaf: np.ndarray
     depth: np.ndarray
 
@@ -84,7 +85,8 @@ class State:
             first_child=np.full(cfg.max_nodes, -1, dtype=np.int32),
             first_particle=np.full(cfg.max_nodes, -1, dtype=np.int32),
 
-            particle_count=np.zeros(cfg.max_nodes, dtype=np.int32),
+            local_particle_count=np.zeros(cfg.max_nodes, dtype=np.int32),
+            subtree_particle_count= np.zeros(cfg.max_nodes, dtype= np.int32),
             leaf=np.ones(cfg.max_nodes, dtype=np.bool_),
             depth=np.zeros(cfg.max_nodes, dtype=np.int32)
         )

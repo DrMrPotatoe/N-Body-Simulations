@@ -32,7 +32,7 @@ def allocate_children(state: State, parent: int) -> int:
     state.nodes.first_child[last_node : last_node + 4] = -1
     state.nodes.first_particle[last_node : last_node + 4] = -1
 
-    state.nodes.particle_count[last_node : last_node + 4] = 0
+    state.nodes.local_particle_count[last_node : last_node + 4] = 0
     state.nodes.leaf[last_node : last_node + 4] = True
     state.nodes.depth[last_node : last_node + 4] = parent_depth + 1
 
@@ -95,7 +95,7 @@ def subdivide(state: State, node: int, cfg: Config) -> None:
     p = state.nodes.first_particle[node]
 
     state.nodes.first_particle[node] = -1
-    state.nodes.particle_count[node] = 0
+    state.nodes.local_particle_count[node] = 0
 
     while p != -1:
 
@@ -120,27 +120,30 @@ def insert_particle(state: State, node: int, particle: int, cfg: Config) -> None
     '''
     Inserts particles into the appropriate quadrant, and orders a subdivide if needed
     '''
+    nodes = state.nodes
+    particles = state.particles
 
-    pm = state.particles.mass[particle]
-    px = state.particles.x[particle]
-    py = state.particles.y[particle]
+    nodes.subtree_particle_count[node] += 1
+    pm = particles.mass[particle]
+    px = particles.x[particle]
+    py = particles.y[particle]
 
-    nm = state.nodes.mass[node]
-    nx = state.nodes.mx[node]
-    ny = state.nodes.my[node]
+    nm = nodes.mass[node]
+    nx = nodes.mx[node]
+    ny = nodes.my[node]
 
-    state.nodes.mass[node] += pm
-    state.nodes.mx[node] = ((nx*nm + px*pm) / (nm+pm))
-    state.nodes.my[node] = ((ny*nm + py*pm) / (nm+pm))
+    nodes.mass[node] += pm
+    nodes.mx[node] = ((nx*nm + px*pm) / (nm+pm))
+    nodes.my[node] = ((ny*nm + py*pm) / (nm+pm))
 
-    if state.nodes.leaf[node]:
+    if nodes.leaf[node]:
 
-        state.particles.next[particle] = state.nodes.first_particle[node]
-        state.nodes.first_particle[node] = particle
+        particles.next[particle] = nodes.first_particle[node]
+        nodes.first_particle[node] = particle
 
-        state.nodes.particle_count[node] += 1
+        nodes.local_particle_count[node] += 1
 
-        if state.nodes.particle_count[node] > cfg.node_capacity:
+        if nodes.local_particle_count[node] > cfg.node_capacity:
 
             subdivide(state= state, 
                       node= node,
@@ -152,7 +155,7 @@ def insert_particle(state: State, node: int, particle: int, cfg: Config) -> None
                             node= node, 
                             particle= particle)
 
-    child = state.nodes.first_child[node] + quadrant
+    child = nodes.first_child[node] + quadrant
 
     insert_particle(state= state, 
                     node= child, 
@@ -189,7 +192,8 @@ def reset_tree(state: State) -> None:
     state.nodes.first_child[root] = -1
     state.nodes.first_particle[root] = -1
 
-    state.nodes.particle_count[root] = 0
+    state.nodes.local_particle_count[:] = 0
+    state.nodes.subtree_particle_count[:] = 0
     state.nodes.leaf[root] = True
     state.nodes.depth[root] = 0
 
@@ -197,8 +201,10 @@ def reset_tree(state: State) -> None:
     state.nodes.my[:] = 0.0
     state.nodes.mass[:] = 0.0
 
-
     state.node_count = root + 1
+
+    state.particles.ax[:] = 0.0
+    state.particles.ay[:] = 0.0
 
     initialize_root(state= state)
 
@@ -284,11 +290,11 @@ def validate_tree(state: State) -> None:
             actual += 1
             p = state.particles.next[p]
 
-        if actual != state.nodes.particle_count[node]:
+        if actual != state.nodes.local_particle_count[node]:
 
             raise RuntimeError(
                 f"Node {node}: "
-                f"count={state.nodes.particle_count[node]}, "
+                f"count={state.nodes.local_particle_count[node]}, "
                 f"actual={actual}"
             )
         

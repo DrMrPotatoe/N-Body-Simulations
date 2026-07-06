@@ -2,7 +2,7 @@ import sys
 sys.dont_write_bytecode = True
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle 
-from matplotlib import cm
+from matplotlib import colormaps
 
 from State import State
 from Config import Config
@@ -26,11 +26,14 @@ def plot_tree(state: State, cfg: Config,
         ax.scatter(state.particles.x,
                    state.particles.y,
                    s=5,
+                   c= 'k',
+                   alpha= 0.5,
+                   edgecolors= None,
                    zorder= 20)
         
     if show_node_bounds:
 
-        cmap = cm.get_cmap('viridis')
+        cmap = colormaps.get_cmap('viridis')
 
         def draw_node(node: int,):
 
@@ -52,7 +55,7 @@ def plot_tree(state: State, cfg: Config,
                                  width= state.nodes.width[node],
                                  height= state.nodes.width[node],
                                  fill= False,
-                                 lw= 0.5, 
+                                 lw= 1 / depth, 
                                  edgecolor= colour,
                                  zorder= depth)
                 

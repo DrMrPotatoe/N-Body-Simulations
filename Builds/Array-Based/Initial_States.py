@@ -18,6 +18,7 @@ def initial_state_random(state: State, extent= 1, seed= 42) -> None:
     state.particles.y[:] = rng.uniform(low= -extent, 
                                        high= extent,
                                        size= n)
+    state.particles.mass[:]= rng.uniform(size= n)
         
 def initial_state_uniform(state: State, sigma= 0.25, seed= 42):
     ''' Generates a cluster of points centered around 0.0'''
@@ -32,6 +33,7 @@ def initial_state_uniform(state: State, sigma= 0.25, seed= 42):
     state.particles.y[:] = rng.normal(loc= 0.0, 
                                       scale= sigma, 
                                       size= n)
+    state.particles.mass[:]= rng.uniform(size= n)
     
 def initial_state_cluster_outliers(state= State, cluster_frac= 0.8, sigma= 0.05, extent= 1, seed= 42):
     ''' Generates a tight cluster around 0, 0 with random points all around'''
