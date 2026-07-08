@@ -3,7 +3,6 @@ from dataclasses import dataclass
 import math
 from pathlib import Path
 
-
 @dataclass(slots=True, frozen=True)
 class Config:
     """
@@ -26,15 +25,20 @@ class Config:
     dt: float = 0.1
     t_end: float = 10.0
     n_steps: int = 0 #Derived
-    collisions: bool = True
-    remove_escaped_particles: bool = True
+    collisions: bool = False
+    remove_escaped_particles: bool = False
     escape_factor: float = 10 # escape radius = factor * log10(n_particles)
-    escape_radius: float = 0.0 #Derived
+    escape_radius: float = 0.0 #Derived; disable by scale_factor= 0
+    integrator: str = "Euler"
 
     # OUTPUT
+    video_output: bool = False
     fps: int = 60
+    frame_interval: int = 3 # How many steps to do between every frame of the output
     verbose: int = 0
-    outdir: str = './Builds/Array-Based/outputs/'
+    progress_update: float = 1 # How many seconds to wait between updates to the progress bar
+    outdir: Path = Path('./Barnes-Hut/Array-Based/outputs')
+    framedir: Path = Path('./Barnes-Hut/Array-Based/frames')
 
     def __post_init__(self):
 
@@ -57,3 +61,4 @@ class Config:
 
         # Other updates:
         Path(self.outdir).mkdir(parents=True, exist_ok= True)
+        Path(self.framedir).mkdir(parents=True, exist_ok= True)

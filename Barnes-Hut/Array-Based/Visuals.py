@@ -28,8 +28,7 @@ def plot_tree(state: State, cfg: Config,
                    s=5,
                    c= 'k',
                    alpha= 0.5,
-                   edgecolors= None,
-                   zorder= 20)
+                   edgecolors= None,)
         
     if show_node_bounds:
 

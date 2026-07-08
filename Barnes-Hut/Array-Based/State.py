@@ -50,8 +50,9 @@ class State:
     root: int
     node_count: int
 
-    time: float
     step: int
+
+    function_calls: int
 
     @classmethod
     def allocate(cls, cfg: Config):
@@ -98,6 +99,7 @@ class State:
             root=0,
             node_count=1,
 
-            time=0.0,
-            step=0
+            step=0,
+
+            function_calls=0,
         )
