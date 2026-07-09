@@ -53,6 +53,8 @@ class State:
     step: int
 
     function_calls: int
+    particle_interactions: int
+    node_visits: int
 
     @classmethod
     def allocate(cls, cfg: Config):
@@ -102,4 +104,6 @@ class State:
             step=0,
 
             function_calls=0,
+            particle_interactions=0,
+            node_visits=0,
         )

@@ -32,13 +32,16 @@ class Config:
     integrator: str = "Euler"
 
     # OUTPUT
-    video_output: bool = False
+    video_output_end: bool = False
+    video_output_live: bool = True
+    save_frame: bool = True
     fps: int = 60
     frame_interval: int = 3 # How many steps to do between every frame of the output
     verbose: int = 0
     progress_update: float = 1 # How many seconds to wait between updates to the progress bar
     outdir: Path = Path('./Barnes-Hut/Array-Based/outputs')
     framedir: Path = Path('./Barnes-Hut/Array-Based/frames')
+    video_filename: Path = Path('Barnes_Hut_out.mp4')
 
     def __post_init__(self):
 

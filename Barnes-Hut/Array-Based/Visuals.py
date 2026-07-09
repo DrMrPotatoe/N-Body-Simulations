@@ -1,5 +1,3 @@
-import sys
-sys.dont_write_bytecode = True
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle 
 from matplotlib import colormaps

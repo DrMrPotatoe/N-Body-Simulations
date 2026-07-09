@@ -13,13 +13,14 @@ from Integrator import integrators
 from Tree_Tests import test_clustered, test_accelerations
 from Visuals import plot_tree
 
-cfg = Config(n_particles= 1000,
-             t_end= 1,
+cfg = Config(n_particles= 10000,
+             t_end= 20,
              collisions= False,
              node_capacity= 1,
              theta= 0.5,
              integrator= "kdk",
-             video_output= True,
+             video_output_live= True,
+             save_frame= False,
              frame_interval= 1,)
 
 integrator = integrators[cfg.integrator]

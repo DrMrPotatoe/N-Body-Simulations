@@ -1,12 +1,11 @@
-import sys
-sys.dont_write_bytecode= True
 from collections.abc import Callable
 import time
 
 from State import State
 from Config import Config
 from Escaped_Particles import clean_escaped_particles
-from Video_Making import save_frame
+from Video_Making import save_frame, init_video, write_video_frame, finish_video
+from QuadTree import build_tree
 
 type Integrator = Callable[[State, Config], None]
 
@@ -16,13 +15,21 @@ def run_simulation(state: State, cfg: Config, integrator: Integrator):
     start = time.time()
     last_print = start
 
+    video = None
+
+    build_tree(state= state, cfg= cfg)
+
+    if cfg.video_output_live:
+        video = init_video(cfg= cfg, state= state)
+
     frame_id= 0
 
-    if cfg.video_output:
+    if cfg.save_frame:
         save_frame(state= state, 
-                    frame_dir= cfg.framedir, 
-                    frame_id= frame_id)
+                   frame_dir= cfg.framedir, 
+                   frame_id= frame_id)
         frame_id += 1
+
     for step in range(cfg.n_steps):
 
         integrator(state= state, cfg= cfg)
@@ -33,8 +40,8 @@ def run_simulation(state: State, cfg: Config, integrator: Integrator):
         if cfg.escape_factor > 0:
             clean_escaped_particles(state= state, 
                                     cfg= cfg)
-
-        if cfg.video_output:
+            
+        if cfg.save_frame:
             if step == cfg.n_steps - 1:
                 save_frame(state= state, 
                            frame_dir= cfg.framedir, 
@@ -48,6 +55,9 @@ def run_simulation(state: State, cfg: Config, integrator: Integrator):
                 
                 frame_id += 1
 
+        if cfg.video_output_live:
+            write_video_frame(video= video,
+                              state= state)
 
 
         now = time.time()
@@ -64,6 +74,8 @@ def run_simulation(state: State, cfg: Config, integrator: Integrator):
                 )
 
             last_print = now
+    if cfg.video_output_live:
+        finish_video(video= video)
     elapsed = time.time() - start
     print(
         f"\r"

@@ -1,6 +1,4 @@
-import sys
-sys.dont_write_bytecode= True
-
+import time
 from State import State
 from Config import Config
 from QuadTree import build_tree
@@ -51,6 +49,48 @@ def kdk_integrator(state: State, cfg: Config):
     p.vy += 0.5 * p.ay * dt
 
     state.step += 1
+
+
+def kdk_integrator_debug(state: State, cfg: Config):
+    ''' Does a single kick-drift-kick Step'''
+
+    if state.step == 0:
+        update_acceleration(state= state, cfg= cfg)
+    
+    dt = cfg.dt
+    p = state.particles
+
+    t0 = time.perf_counter()
+
+    p.vx += 0.5 * p.ax * dt
+    p.vy += 0.5 * p.ay * dt
+
+    p.x += p.vx * dt
+    p.y += p.vy * dt
+
+    t1 = time.perf_counter()
+
+    build_tree(state, cfg)
+
+    t2 = time.perf_counter()
+
+    compute_acceleration(state, cfg)
+
+    t3 = time.perf_counter()
+
+    p.vx += 0.5 * p.ax * dt
+    p.vy += 0.5 * p.ay * dt
+
+    state.step += 1
+
+    state.function_calls += 1
+
+    print(
+        f"move: {t1-t0:.3f}s | "
+        f"tree: {t2-t1:.3f}s | "
+        f"forces: {t3-t2:.3f}s"
+    )
+
 
 integrators = {
     "Euler": euler_integrator,

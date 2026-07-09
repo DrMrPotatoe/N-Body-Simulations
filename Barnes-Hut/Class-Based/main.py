@@ -1,9 +1,9 @@
 from QuadTree_Interface import QuadTree_Interface
 
 
-testmethod = QuadTree_Interface(1000)
+testmethod = QuadTree_Interface(10)
 testmethod.capacity = 1
-testmethod.T1 = 1000
+testmethod.T1 = 10
 testmethod.collide = True
 testmethod.density = 1e4
 testmethod.verbose = 0
