@@ -53,8 +53,12 @@ class State:
     step: int
 
     function_calls: int
-    particle_interactions: int
+    p2p_interactions: int
+    p2n_interactions: int
     node_visits: int
+
+    particle_stack: np.ndarray
+    node_stack: np.ndarray
 
     @classmethod
     def allocate(cls, cfg: Config):
@@ -104,6 +108,10 @@ class State:
             step=0,
 
             function_calls=0,
-            particle_interactions=0,
+            p2p_interactions=0,
+            p2n_interactions=0,
             node_visits=0,
+
+            particle_stack = np.empty(cfg.max_nodes, dtype= np.int32),
+            node_stack = np.empty(cfg.max_nodes, dtype= np.int32)
         )

@@ -29,11 +29,10 @@ def compute_acceleration(state: State, cfg: Config):
         "theta2": cfg.theta**2,
         "G": cfg.G,
         "root": state.root,
-
-        "stack": np.empty(cfg.max_nodes, dtype= np.int32)
     }
 
-    local_interactions = 0
+    local_p2p = 0
+    local_p2n = 0
     local_visits = 0
 
     for p in range(cfg.n_particles):
@@ -41,21 +40,24 @@ def compute_acceleration(state: State, cfg: Config):
         if not particles.alive[p]:
             continue
         
-        ax, ay, interactions, visits = acceleration_on(data= data,
-                                 particle= p,)
+        ax, ay, p2p, p2n, visits = acceleration_on(data= data,
+                                 particle= p,
+                                 stack= state.particle_stack)
         
         particles.ax[p] = ax
         particles.ay[p] = ay
 
-        local_interactions += interactions 
+        local_p2p += p2p
+        local_p2n += p2n
         local_visits += visits
 
-    state.particle_interactions += local_interactions
+    state.p2p_interactions += local_p2p
+    state.p2n_interactions += local_p2n
     state.node_visits += local_visits
 
 
 
-def acceleration_on(data: dict, particle: int,) -> tuple[float, float, int]:
+def acceleration_on(data: dict, particle: int, stack: np.ndarray) -> tuple[float, float, int, int, int]:
     ''' Computes accelerations on particle, now with a stack!'''
 
     # Cache arrays
@@ -78,7 +80,6 @@ def acceleration_on(data: dict, particle: int,) -> tuple[float, float, int]:
     theta2 = data["theta2"]
     G = data["G"]
     root = data["root"]
-    stack = data["stack"]
 
     x = px[particle]
     y = py[particle]
@@ -86,7 +87,8 @@ def acceleration_on(data: dict, particle: int,) -> tuple[float, float, int]:
     ax = 0.0
     ay = 0.0
 
-    interactions = 0
+    p2p = 0
+    p2n = 0
     node_visits = 0
 
     top = 0
@@ -121,7 +123,7 @@ def acceleration_on(data: dict, particle: int,) -> tuple[float, float, int]:
                     ax += df * dx
                     ay += df * dy
 
-                    interactions += 1
+                    p2p += 1
                 
                 p = next_particle[p]
 
@@ -139,7 +141,7 @@ def acceleration_on(data: dict, particle: int,) -> tuple[float, float, int]:
                 ax += df * dx
                 ay += df * dy
 
-                interactions += 1
+                p2n += 1
 
             else:
                 child = first_child[node]
@@ -150,7 +152,7 @@ def acceleration_on(data: dict, particle: int,) -> tuple[float, float, int]:
                 stack[top+3] = child+3
                 top += 4
 
-    return ax, ay, interactions, node_visits
+    return ax, ay, p2p, p2n, node_visits
 
                 
 

@@ -91,10 +91,47 @@ def kdk_integrator_debug(state: State, cfg: Config):
         f"forces: {t3-t2:.3f}s"
     )
 
+def euler_integrator_debug(state: State, cfg: Config):
+    ''' Does a single kick-drift-kick Step'''
+    
+    dt = cfg.dt
+    p = state.particles
+
+    t0 = time.perf_counter()
+
+    build_tree(state, cfg)
+
+    t1 = time.perf_counter()
+
+    compute_acceleration(state, cfg)
+
+    t2 = time.perf_counter()
+
+    p.x += p.vx * dt
+    p.y += p.vy * dt
+
+    p.vx += p.ax * dt
+    p.vy += p.ay * dt
+
+    t3 = time.perf_counter()
+
+    state.step += 1
+
+    state.function_calls += 1
+
+    print(
+        f"tree: {t1-t0:.3f}s | "
+        f"forces: {t2-t1:.3f}s | "
+        f"move: {t3-t2:.3f}s"
+    )
+
+
 
 integrators = {
     "Euler": euler_integrator,
     "kdk": kdk_integrator,
+    "Euler_debug": euler_integrator_debug,
+    "kdk_debug": kdk_integrator_debug
     }
 
 

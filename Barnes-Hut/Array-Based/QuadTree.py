@@ -302,4 +302,177 @@ def validate_tree(state: State) -> None:
         raise RuntimeError(f"Tree contains {state.nodes.mass[state.root]} mass but it should contain {mass_total}")
 
 
+def insert_particle_stack(state: State, cfg: Config, particle: int) -> None:
+    ''' Inserts a particle into the tree, now iterative'''
+
+    node_stack = state.node_stack
+    particle_stack = state.particle_stack
+
+    pmass = state.particles.mass
+    nmass = state.nodes.mass
+
+    mx = state.nodes.mx
+    my = state.nodes.my
+    nx = state.nodes.x
+    ny = state.nodes.y
+    px = state.particles.x
+    py = state.particles.y
+
+    first_child = state.nodes.first_child
+    first_particle = state.nodes.first_particle
+    next_particle = state.particles.next
+
+    leaf = state.nodes.leaf
+    local_count = state.nodes.local_particle_count
+    subtree_count = state.nodes.subtree_particle_count
+
+    top = 0
+
+    node_stack[top] = state.root
+    particle_stack[top] = particle
+
+    while top >= 0:
+
+        node = node_stack[top]
+        particle = particle_stack[top]
+        top -=1
+
+        subtree_count[node] += 1
+
+        nm = nmass[node]
+        pm = pmass[particle]
+        mx[node] = (mx[node]*nm + px[particle]*pm) / (nm + pm)
+        my[node] = (my[node]*nm + py[particle]*pm) / (nm + pm)
+        nmass[node] += pm
+
+        # if not leaf node
+        if not leaf[node]:
+            
+            #quadrant= get_quadrant(state= state, node= node, particle= particle)
+            quadrant = (px[particle]>=nx[node]) + 2 * (py[particle]>= ny[node])
+
+            top += 1
+            node_stack[top] = first_child[node] + quadrant
+            particle_stack[top] = particle
+
+            continue
+
+        # if leaf has room
+        if local_count[node] < cfg.node_capacity:
+
+            next_particle[particle] = first_particle[node]
+            first_particle[node] = particle
+            local_count[node] += 1
+
+            continue
+
+        # leaf has no room
+        # subdivide leaf into particles
+        old_particle = subdivide_stack(state= state, node= node)
+
+        # push old particles to the stack
+
+        while old_particle != -1:
+            next_old = next_particle[old_particle]
+            next_particle[old_particle] = -1
+
+            #quadrant = get_quadrant(state= state, node= node, particle= old_particle)
+            quadrant = (px[old_particle]>=nx[node]) + 2 * (py[old_particle]>= ny[node])
+
+            top += 1
+            node_stack[top] = first_child[node] + quadrant
+            particle_stack[top] = old_particle
+
+            old_particle = next_old
+
+        # push current particle to stack
+
+        #quadrant = get_quadrant(state= state, node= node, particle= particle)
+        quadrant = (px[particle]>=nx[node]) + 2 * (py[particle]>= ny[node])
+
+        top += 1
+        node_stack[top] = first_child[node] + quadrant
+        particle_stack[top] = particle
+
+
+def subdivide_stack(state: State, node: int) -> int:
+    ''' Subdivides a node and returns the first child of the divided node'''
+
+    nodes = state.nodes
+
+    last_node = allocate_children(state= state,
+                             parent= node)
+    
+    nx = nodes.x[node]
+    ny = nodes.y[node]
+    width = nodes.width[node]
+
+    child_width = width * 0.5
+    offset = width * 0.25
+
+    child_offset_key = ((-1, -1),
+                        (+1, -1),
+                        (-1, +1),
+                        (+1, +1)) 
+    
+    for  i, (dx, dy) in enumerate(child_offset_key):
+
+        child = last_node + i
+
+        nodes.x[child] = nx + dx*offset
+        nodes.y[child] = ny + dy*offset
+        nodes.width[child] = child_width 
+
+    # Distribute particles
+
+    first_particle = nodes.first_particle[node]
+
+    nodes.first_particle[node] = -1
+    nodes.local_particle_count[node] = 0
+
+    return first_particle
+
+
+def allocate_children_stack(state: State, parent: int) -> None:
+    ''' Allocates 4 empty children'''
+    nodes = state.nodes
+
+    first_child = state.node_count
+
+    if first_child+4 > len(nodes.x):
+        raise BufferError(f'Max node count exceeded ({first_child+4} / {len(nodes.x)})')
+    
+    state.node_count += 4
+
+    parent_depth = nodes.depth[parent]
+
+    #link parent to children
+    nodes.first_child[parent] = first_child
+    nodes.leaf[parent] = False
+
+    # Reset children
+    children = slice(first_child, first_child + 4)
+
+    nodes.mass[children] = 0.0
+    nodes.mx[children] = 0.0
+    nodes.my[children] = 0.0
+
+    nodes.first_child[children] = -1
+    nodes.first_particle[children] = -1
+
+    nodes.local_particle_count[children] = -1
+    nodes.subtree_particle_count[children] = -1
+
+    nodes.leaf[children] = True
+    nodes.depth[children] = parent_depth + 1
+
+    return first_child
+
+
+
+        
+
+
+
+
 

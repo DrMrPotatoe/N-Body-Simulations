@@ -19,9 +19,6 @@ def test_clustered(state: State, cfg: Config, n_tests: int = 100, seed: int=  42
     print(f" {n_tests} Cluster Tests passed")
 
 
-import numpy as np
-
-
 def test_accelerations(state: State, cfg: Config) -> None:
     """
     Compare Barnes-Hut accelerations against brute-force accelerations.
