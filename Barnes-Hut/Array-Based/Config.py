@@ -12,6 +12,8 @@ class Config:
     # PHYSICS
     G: float = 1e-6
     main_mass: float = 3e4
+    starting_mass: float = 1
+    main_bodies: int = 1
     density: float = 1e6
     eps: float = 1e-3
 
@@ -25,11 +27,17 @@ class Config:
     dt: float = 0.1
     t_end: float = 10.0
     n_steps: int = 0 #Derived
-    collisions: bool = False
     remove_escaped_particles: bool = False
-    escape_factor: float = 10 # escape radius = factor * log10(n_particles)
+    escape_factor: float = 3 # escape radius = factor * log10(n_particles)
     escape_radius: float = 0.0 #Derived; disable by scale_factor= 0
-    integrator: str = "Euler"
+    integrator: str = "euler"
+
+    # COLLISIONS
+    collisions: bool = False
+    collision_type: str = "merge"
+    restitution_coefficient: float = 0.5
+    collision_velocity: float = 0.5
+    minimum_mass_fraction: float = 0.05
 
     # OUTPUT
     video_output_end: bool = False
@@ -39,8 +47,9 @@ class Config:
     frame_interval: int = 3 # How many steps to do between every frame of the output
     verbose: int = 0
     progress_update: float = 1 # How many seconds to wait between updates to the progress bar
-    outdir: Path = Path('./Barnes-Hut/Array-Based/outputs')
-    framedir: Path = Path('./Barnes-Hut/Array-Based/frames')
+    status_print_interval = 25 # How many steps between tree status summary
+    outdir: Path = Path('./outputs')
+    framedir: Path = Path('./frames')
     video_filename: Path = Path('Barnes_Hut_out.mp4')
 
     def __post_init__(self):

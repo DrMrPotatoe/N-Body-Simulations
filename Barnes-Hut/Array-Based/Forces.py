@@ -8,28 +8,26 @@ def compute_acceleration(state: State, cfg: Config):
 
     particles = state.particles
     nodes = state.nodes
-    
 
-    data = {
-        "px": particles.x,
-        "py": particles.y,
-        "pmass": particles.mass,
-        "next": particles.next,
+    px = particles.x
+    py = particles.y
+    pmass = particles.mass
+    next_particle = particles.next
 
-        "mx": nodes.mx,
-        "my": nodes.my,
-        "mass": nodes.mass,
-        "width": nodes.width,
-        "leaf": nodes.leaf,
-        "first_particle": nodes.first_particle,
-        "first_child": nodes.first_child,
-        "subtree_count": nodes.subtree_particle_count,
+    mx = nodes.mx
+    my = nodes.my
+    nmass = nodes.mass
+    width = nodes.width
+    leaf = nodes.leaf
+    first_particle = nodes.first_particle
+    first_child = nodes.first_child
+    subtree_count = nodes.subtree_particle_count
 
-        "eps2": cfg.eps**2,
-        "theta2": cfg.theta**2,
-        "G": cfg.G,
-        "root": state.root,
-    }
+    eps2 = cfg.eps**2
+    theta2 = cfg.theta**2
+    G = cfg.G
+    root = state.root
+    stack = state.particle_stack
 
     local_p2p = 0
     local_p2n = 0
@@ -39,17 +37,86 @@ def compute_acceleration(state: State, cfg: Config):
 
         if not particles.alive[p]:
             continue
-        
-        ax, ay, p2p, p2n, visits = acceleration_on(data= data,
-                                 particle= p,
-                                 stack= state.particle_stack)
+
+        # Whole force tree traversal bit 
+
+        x = px[p]
+        y = py[p]
+
+        ax = 0.0
+        ay = 0.0
+
+        p2p = 0
+        p2n = 0
+        node_visits = 0
+
+        top = 0
+        stack[top] = root
+        top += 1
+
+        while top:
+
+            top -= 1
+            node = stack[top]
+            node_visits += 1
+
+            if subtree_count[node] == 0:
+                continue
+
+            # If Leaf:
+            if leaf[node]:
+
+                p1 = first_particle[node]
+
+                while p1 != -1:
+
+                    if p1 != p:
+
+                        dx = px[p1] - x
+                        dy = py[p1] - y
+                        d2 = dx*dx + dy*dy + eps2
+
+                        invr3 = 1.0 / (d2 * sqrt(d2))
+                        df = G * pmass[p1] * invr3
+
+                        ax += df * dx
+                        ay += df * dy
+
+                        p2p += 1
+                    
+                    p1 = next_particle[p1]
+
+            # If Node
+            else:
+                dx = mx[node] - x
+                dy = my[node] - y
+                d2 = dx*dx + dy*dy + eps2
+
+                if node != root and width[node]**2 < theta2*d2:
+                    
+                    invr3 = 1.0 / (d2 * sqrt(d2))
+                    df = G * nmass[node] * invr3
+
+                    ax += df * dx
+                    ay += df * dy
+
+                    p2n += 1
+
+                else:
+                    child = first_child[node]
+                    # add to stack
+                    stack[top] = child
+                    stack[top+1] = child+1
+                    stack[top+2] = child+2
+                    stack[top+3] = child+3
+                    top += 4
         
         particles.ax[p] = ax
         particles.ay[p] = ay
 
         local_p2p += p2p
         local_p2n += p2n
-        local_visits += visits
+        local_visits += node_visits
 
     state.p2p_interactions += local_p2p
     state.p2n_interactions += local_p2n
@@ -174,7 +241,7 @@ def acceleration_between_particles(state: State, p1: int, p2: int, cfg: Config) 
     ax = df * (dx)
     ay = df * (dy)
 
-    state.particle_interactions += 1
+    state.p2p_interactions += 1
 
     return ax, ay
 
@@ -193,7 +260,7 @@ def acceleration_between_particle_and_node(state: State, p: int, n: int, cfg: Co
     ax = df * dx
     ay = df * dy
 
-    state.particle_interactions += 1
+    state.p2n_interactions += 1
 
     return ax, ay
 

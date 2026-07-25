@@ -204,6 +204,10 @@ def reset_tree(state: State) -> None:
     state.particles.ax[:] = 0.0
     state.particles.ay[:] = 0.0
 
+    state.node_visits = 0
+    state.p2n_interactions = 0
+    state.p2p_interactions = 0
+    
     initialize_root(state= state)
 
 

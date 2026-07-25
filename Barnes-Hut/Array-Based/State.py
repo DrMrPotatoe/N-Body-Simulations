@@ -16,9 +16,12 @@ class Particles:
 
     mass: np.ndarray
     radius: np.ndarray
+    max_radius: float
 
     next: np.ndarray
     alive: np.ndarray
+
+
 
 
 @dataclass(slots= True)
@@ -57,6 +60,10 @@ class State:
     p2n_interactions: int
     node_visits: int
 
+    move_time: float
+    force_time: float
+    tree_time: float
+
     particle_stack: np.ndarray
     node_stack: np.ndarray
 
@@ -75,9 +82,11 @@ class State:
 
             mass=np.zeros(cfg.n_particles),
             radius=np.zeros(cfg.n_particles),
+            max_radius=0.0,
 
             next=np.full(cfg.n_particles, -1, dtype=np.int32),
-            alive=np.ones(cfg.n_particles, dtype=np.bool_)
+            alive=np.ones(cfg.n_particles, dtype=np.bool_),
+
         )
 
         N = Nodes(
@@ -112,6 +121,11 @@ class State:
             p2n_interactions=0,
             node_visits=0,
 
+            move_time= 0,
+            tree_time= 0,
+            force_time= 0,
+
             particle_stack = np.empty(cfg.max_nodes, dtype= np.int32),
-            node_stack = np.empty(cfg.max_nodes, dtype= np.int32)
+            node_stack = np.empty(cfg.max_nodes, dtype= np.int32),
+
         )

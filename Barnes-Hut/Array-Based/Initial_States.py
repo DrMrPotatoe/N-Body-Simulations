@@ -3,7 +3,7 @@ import numpy as np
 from Config import Config
 from State import State
 
-def initial_state_random(state: State, extent= 1, seed= 42) -> None:
+def initial_state_random(state: State, cfg: Config, extent= 1, seed= 42,) -> None:
     ''' Geneates a random distribuition of points'''
     
     rng = np.random.default_rng(seed= seed)
@@ -16,9 +16,10 @@ def initial_state_random(state: State, extent= 1, seed= 42) -> None:
     state.particles.y[:] = rng.uniform(low= -extent, 
                                        high= extent,
                                        size= n)
-    state.particles.mass[:]= rng.uniform(size= n)
+    state.particles.mass[:]= rng.normal(loc= cfg.starting_mass,
+                                        size= n)
         
-def initial_state_uniform(state: State, sigma= 0.25, seed= 42):
+def initial_state_uniform(state: State, cfg: Config, sigma= 0.25, seed= 42):
     ''' Generates a cluster of points centered around 0.0'''
 
     rng = np.random.default_rng(seed= seed)
@@ -31,7 +32,9 @@ def initial_state_uniform(state: State, sigma= 0.25, seed= 42):
     state.particles.y[:] = rng.normal(loc= 0.0, 
                                       scale= sigma, 
                                       size= n)
-    state.particles.mass[:]= rng.uniform(size= n)
+    state.particles.mass[:]= rng.lognormal(mean= 0,
+                                           sigma= 0.5,
+                                           size= n)
     
 def initial_state_cluster_outliers(state= State, cluster_frac= 0.8, sigma= 0.05, extent= 1, seed= 42):
     ''' Generates a tight cluster around 0, 0 with random points all around'''

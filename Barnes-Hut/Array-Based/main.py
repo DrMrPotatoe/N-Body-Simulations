@@ -9,31 +9,30 @@ from Initial_States import initial_state_galaxies, initial_state_cluster_outlier
 from Simulate import run_simulation
 #from QuadTree import build_tree, validate_tree
 #from Forces import compute_acceleration
-from Integrator import integrators
-#from Tree_Tests import test_clustered, test_accelerations
+from Tree_Tests import test_clustered, test_accelerations
 #from Visuals import plot_tree
 from Tree_Statistics import print_tree_statistics
 
-cfg = Config(n_particles= 100000,
-             t_end= .1,
-             collisions= False,
+cfg = Config(n_particles= 1000,
+             dt= .1,
+             t_end= 10,
+             collisions= True,
              node_capacity= 1, 
              theta= 0.5,
-             integrator= "Euler_debug",
-             video_output_live= False,
+             integrator= "euler",
+             video_output_live= True,
              save_frame= False,
-             frame_interval= 1,)
-
-integrator = integrators[cfg.integrator]
+             frame_interval= 1,
+             progress_update= 0.1)
 
 state = State.allocate(cfg= cfg)
 
-initial_state_uniform(state= state, )
+initial_state_uniform(state= state, cfg= cfg)
 
-run_simulation(state= state, cfg= cfg, integrator= integrator)
+run_simulation(state= state, cfg= cfg,)
 
 print_tree_statistics(state= state, cfg= cfg)
-#test_accelerations(state=state, cfg= Config)
+#test_accelerations(state=state, cfg= cfg)
 '''
 plot_tree(state= state, 
           cfg= cfg, 
