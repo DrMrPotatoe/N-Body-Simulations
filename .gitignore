@@ -5,5 +5,9 @@
 /lib
 /lib64
 /share
+.venv/
+.python-version
+uv.lock
+pyproject.toml
 pyvenv.cfg
 Barnes-Hut/Array-Based/frames/
