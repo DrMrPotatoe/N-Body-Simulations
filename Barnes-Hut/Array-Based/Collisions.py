@@ -5,7 +5,7 @@ from math import sqrt
 from Config import Config
 from State import State
 
-def assing_radius(state: State, cfg: Config) -> None:
+def assign_radius(state: State, cfg: Config) -> None:
     ''' Work out and assing the radius of every (alive) particle'''
 
     mass = state.particles.mass
@@ -16,9 +16,12 @@ def assing_radius(state: State, cfg: Config) -> None:
     for p in range(cfg.n_particles):
         if not alive[p]:
             continue
-        radius[p] = pow((3 * mass[p])/(4*pi*density), 1/3)
 
-    state.particles.radius = radius
+        if mass[p] > sqrt(cfg.main_mass):
+            radius[p] = pow((3 * mass[p])/(4*pi*pow(density,2)), 1/3)
+        else: 
+            radius[p] = pow((3 * mass[p])/(4*pi*density), 1/3)
+            
     state.particles.max_radius = radius.max()
 
 
@@ -223,7 +226,7 @@ def handle_collisions(state: State, cfg: Config):
     ''' assigns radius and handles all the collisions for this timestep'''
     collision = collision_modes[cfg.collision_type]
 
-    assing_radius(state= state, cfg= cfg)
+    assign_radius(state= state, cfg= cfg)
 
     find_collisions(state= state, cfg= cfg)
 

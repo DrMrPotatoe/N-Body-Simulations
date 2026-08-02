@@ -24,9 +24,7 @@ def plot_tree(state: State, cfg: Config,
         ax.scatter(state.particles.x,
                    state.particles.y,
                    s=5,
-                   c= 'k',
-                   alpha= 0.5,
-                   edgecolors= None,)
+                   c= 'k',)
         
     if show_node_bounds:
 

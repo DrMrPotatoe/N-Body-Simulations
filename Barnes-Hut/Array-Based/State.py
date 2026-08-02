@@ -67,6 +67,8 @@ class State:
     particle_stack: np.ndarray
     node_stack: np.ndarray
 
+    rng_generator: np.random._generator.Generator
+
     @classmethod
     def allocate(cls, cfg: Config):
 
@@ -127,5 +129,7 @@ class State:
 
             particle_stack = np.empty(cfg.max_nodes, dtype= np.int32),
             node_stack = np.empty(cfg.max_nodes, dtype= np.int32),
+
+            rng_generator = np.random.default_rng(seed= cfg.generation_seed)
 
         )

@@ -83,7 +83,7 @@ def init_video(cfg: Config, state: State) -> VideoContext:
         )
 
     writer = FFMpegWriter(
-        fps=cfg.fps,
+        fps=1 / cfg.dt,
         bitrate=-1,
         )
 
